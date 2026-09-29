@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tuhin Mahmud · Process Systems Engineering</title>
+<meta name="description" content="Tuhin Mahmud — MSc researcher in Chemical Engineering at BUET working on dynamic process modeling, sensitivity analysis and surrogate-assisted optimization.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚗️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F3F5F6;
+    --ink: #17222E;
+    --muted: #5A6875;
+    --rule: #D3DADF;
+    --water: #1E6A86;
+    --salt: #A8782A;
+    --panel: #FFFFFF;
+    --sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+    --serif: "Literata", Georgia, "Times New Roman", serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #121A21; --ink: #E4E9ED; --muted: #97A5B1; --rule: #2A3743;
+      --water: #6FB3CE; --salt: #D6A85A; --panel: #18222B;
+    }
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--serif); font-size: 1.0625rem; line-height: 1.7;
+  }
+  a { color: var(--water); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+  a:focus-visible { outline: 2px solid var(--salt); outline-offset: 3px; border-radius: 2px; }
+
+  .layout {
+    max-width: 1080px; margin: 0 auto; padding: 3.5rem 1.5rem 4rem;
+    display: grid; grid-template-columns: 290px 1fr; gap: 4rem;
+  }
+  aside {
+    position: sticky; top: calc(2rem + env(safe-area-inset-top, 0px)); align-self: start;
+    max-height: calc(100vh - 4rem - env(safe-area-inset-top, 0px)); overflow-y: auto;
+    overscroll-behavior: contain; scrollbar-width: thin; padding-right: .5rem;
+  }
+
+  .portrait {
+    width: 100%; max-width: 240px; height: auto; display: block; margin-bottom: 1.75rem;
+    aspect-ratio: 4 / 5; object-fit: cover; object-position: center top;
+    border-radius: 6px; border: 1px solid var(--rule);
+  }
+
+  h1 {
+    font-family: var(--sans); font-weight: 700; font-size: 2.1rem; line-height: 1.1;
+    letter-spacing: -0.02em; margin: 0 0 .5rem;
+  }
+  .role { font-family: var(--sans); color: var(--muted); font-size: .98rem; line-height: 1.5; margin: 0 0 1.5rem; }
+  .links { list-style: none; padding: 0; margin: 0; font-family: var(--sans); font-size: .95rem; }
+  .links li { padding: .35rem 0; border-top: 1px solid var(--rule); }
+  .links li:last-child { border-bottom: 1px solid var(--rule); }
+  nav.toc { margin-top: 1.75rem; font-family: var(--sans); font-size: .9rem; }
+  nav.toc a { color: var(--muted); text-decoration: none; display: block; padding: .15rem 0; }
+  nav.toc a:hover { color: var(--ink); }
+
+  main { min-width: 0; max-width: 68ch; }
+  section { margin-bottom: 3.25rem; }
+  h2 {
+    font-family: var(--sans); font-weight: 600; font-size: 1.35rem; letter-spacing: -0.01em;
+    margin: 0 0 1rem; padding-bottom: .4rem; border-bottom: 2px solid var(--ink);
+  }
+  h3 { font-family: var(--sans); font-weight: 600; font-size: 1.05rem; margin: 0; line-height: 1.4; }
+  p { margin: 0 0 1rem; }
+  .lede { font-size: 1.2rem; line-height: 1.6; }
+
+  .interests { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0; margin: 1.25rem 0 0; list-style: none; font-family: var(--sans); font-size: .88rem; }
+  .interests li { border: 1px solid var(--rule); background: var(--panel); padding: .2rem .7rem; border-radius: 999px; }
+
+  .entry { display: grid; grid-template-columns: 7.5rem 1fr; gap: 1.25rem; padding: 1rem 0; border-top: 1px solid var(--rule); }
+  .entry:first-of-type { border-top: 0; padding-top: 0; }
+  .when { font-family: var(--sans); font-size: .88rem; color: var(--muted); padding-top: .15rem; }
+  .entry p { margin: .3rem 0 0; font-size: 1rem; }
+  .meta { color: var(--muted); font-size: .95rem; }
+
+  .subhead { font-size: .95rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 1.5rem 0 .75rem; }
+  .subhead:first-of-type { margin-top: 0; }
+  .pub { padding: 1rem 0 1rem 1rem; border-left: 3px solid var(--rule); margin-bottom: 1rem; }
+  .pub.first-author { border-left-color: var(--water); }
+  .pub .title { font-weight: 500; }
+  .pub .authors { font-size: .95rem; margin-top: .25rem; }
+  .pub .authors b { font-weight: 600; }
+  .status {
+    display: inline-block; font-family: var(--sans); font-size: .8rem; font-weight: 500;
+    color: var(--salt); border: 1px solid currentColor; border-radius: 4px; padding: 0 .4rem; margin-top: .4rem;
+  }
+  .pub .extra { font-family: var(--sans); font-size: .88rem; margin-left: .6rem; }
+
+  .skills { display: grid; grid-template-columns: 9rem 1fr; gap: .5rem 1.25rem; font-size: 1rem; }
+  .skills dt { font-family: var(--sans); font-weight: 600; font-size: .92rem; padding-top: .1rem; }
+  .skills dd { margin: 0; }
+
+  footer { font-family: var(--sans); font-size: .85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; gap: 2rem; padding-top: 2rem; }
+    aside { position: static; max-height: none; overflow: visible; padding-right: 0; }
+    .portrait { max-width: 170px; }
+    nav.toc { display: none; }
+    .entry { grid-template-columns: 1fr; gap: .1rem; }
+    .skills { grid-template-columns: 1fr; gap: .1rem; }
+    .skills dd { margin-bottom: .6rem; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <img class="portrait" src="photo.webp" alt="Portrait of Tuhin Mahmud" width="1111" height="1416">
+
+    <h1>Tuhin Mahmud</h1>
+    <p class="role">MSc researcher, Chemical Engineering<br>Bangladesh University of Engineering and Technology (BUET), Dhaka</p>
+
+    <ul class="links">
+      <li><a href="mailto:tuhinmahmud181@gmail.com">tuhinmahmud181@gmail.com</a></li>
+      <li><a href="https://github.com/TuhinMahmud181">GitHub</a></li>
+      <li><a href="https://www.researchgate.net/profile/Md-Mahmud-117">ResearchGate</a></li>
+      <!-- Optional: uncomment and fill in
+      <li><a href="https://scholar.google.com/">Google Scholar</a></li>
+      <li><a href="https://orcid.org/">ORCID</a></li>
+      <li><a href="https://www.linkedin.com/in/">LinkedIn</a></li>
+      <li><a href="cv.pdf">CV (PDF)</a></li>
+      -->
+    </ul>
+
+    <nav class="toc" aria-label="Page sections">
+      <a href="#about">About</a>
+      <a href="#publications">Publications</a>
+      <a href="#research">Research projects</a>
+      <a href="#design">Design projects</a>
+      <a href="#experience">Experience</a>
+      <a href="#training">Industrial training</a>
+      <a href="#education">Education</a>
+      <a href="#awards">Awards</a>
+      <a href="#skills">Tools and methods</a>
+    </nav>
+  </aside>
+
+  <main>
+    <section id="about">
+      <h2>About</h2>
+      <p class="lede">I am a chemical engineer and MSc researcher at BUET working in process systems engineering. My interest is in using mathematical models to make better decisions about how chemical processes are designed, operated and made safe.</p>
+      <p>My MSc research focuses on solar-driven zero liquid discharge desalination. I developed a transient, plant-level model of a closed-loop, multi-plate falling-film solar still, used global sensitivity analysis to identify the parameters that most influence its energy demand, and am now working on surrogate-assisted optimization of its design.</p>
+      <p>I also work as a research assistant on an industry-sponsored project developing ammonia synthesis with a liquid catalyst, where I design and plan the experimental programme needed to obtain kinetic data. Earlier, in my undergraduate work, I applied Bayesian networks to gas pipeline risk in Dhaka and optimized a sulfuric acid converter.</p>
+      <p>I am applying to PhD programs in process systems engineering.</p>
+      <ul class="interests" aria-label="Research interests">
+        <li>Dynamic process modeling</li>
+        <li>Global sensitivity analysis</li>
+        <li>Surrogate-assisted optimization</li>
+        <li>Uncertainty quantification</li>
+        <li>Desalination and ZLD</li>
+        <li>Process safety and risk</li>
+      </ul>
+    </section>
+
+    <section id="publications">
+      <h2>Publications</h2>
+
+      <h3 class="subhead">Journal manuscripts</h3>
+
+      <div class="pub first-author">
+        <div class="title">Transient plant-boundary modeling and sensitivity analysis of a closed-loop cascade solar still for zero liquid discharge desalination</div>
+        <div class="authors"><b>T. Mahmud</b>, S. Rushd, M. S. Khan, A. Rahman, M. Arifuzzaman</div>
+        <span class="status">Under review, <i>Journal of Water Process Engineering</i> (Elsevier)</span>
+        <a class="extra" href="https://github.com/TuhinMahmud181/ZLDD_Solar_Still_Modeling">Code</a>
+      </div>
+
+      <div class="pub first-author">
+        <div class="title">Estimating gas leak frequency in a data-sparse urban distribution network: a noisy-OR Bayesian network for Dhaka, Bangladesh</div>
+        <div class="authors"><b>T. Mahmud</b>, SR Syeda</div>
+        <span class="status">Under review, <i>Process Safety and Environmental Protection</i> (Elsevier)</span>
+        <a class="extra" href="https://github.com/TuhinMahmud181/dhaka-gas-leak-bayesian-network">Code</a>
+      </div>
+
+      <div class="pub">
+        <div class="title">Solar-powered zero liquid discharge desalination: a systematic review of technologies, performance, and sustainability</div>
+        <!-- TODO: check this author order matches the manuscript -->
+        <div class="authors">S. Rushd, <b>T. Mahmud</b>, M. S. Khan, A. Rahman, M. Arifuzzaman</div>
+        <span class="status">Under review, <i>Reviews in Chemical Engineering</i> (De Gruyter)</span>
+      </div>
+
+      <h3 class="subhead">Conference abstracts</h3>
+
+      <div class="pub first-author">
+        <div class="title">A continuous-flow multi-plate solar evaporator for zero liquid discharge desalination: modeling and energy–recovery trade-offs</div>
+        <div class="authors"><b>T. Mahmud</b>, S. Rushd, M. S. Khan</div>
+        <span class="status">Accepted for presentation, International Conference on Chemical Engineering (ICChE 2026), BUET</span>
+      </div>
+
+      <div class="pub first-author">
+        <div class="title">Bayesian network-based quantitative assessment of failure probabilities in Bangladesh gas transmission pipelines</div>
+        <div class="authors"><b>T. Mahmud</b>, S. S. Razia</div>
+        <span class="status">Accepted for presentation, International Conference on Chemical Engineering (ICChE 2026), BUET</span>
+      </div>
+    </section>
+
+    <section id="research">
+      <h2>Research projects</h2>
+
+      <div class="entry">
+        <div class="when">2025 – now</div>
+        <div>
+          <h3>Zero liquid discharge desalination</h3>
+          <p>Freshwater scarcity is pushing more regions toward desalination, yet conventional plants return a concentrated brine that is costly to dispose of and harms coastal and inland ecosystems. Zero liquid discharge removes that waste stream by recovering nearly all of the water, but it is energy-intensive, which limits its use where power is expensive or unreliable. Solar-driven systems offer a route to make it practical, provided their energy demand is well understood and controlled.</p>
+          <p>The objective of this work is to understand and reduce the energy demand of a closed-loop, multi-plate falling-film solar still. I developed a transient, plant-level model in MATLAB that captures the coupled heat and mass transfer through the whole system, including the closed air loop, feed preheating and an air-to-air recuperator. I used the model to evaluate the recuperator's effect on energy consumption, applied global sensitivity analysis to identify which design and operating parameters matter most, and located the operating limits that constrain how much water the system can recover.</p>
+          <p class="meta">Funded by the Deanship of Scientific Research, King Faisal University.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">2026 – now</div>
+        <div>
+          <h3>Ammonia synthesis with a liquid catalyst</h3>
+          <p>Ammonia is essential for fertiliser and food production, but the Haber-Bosch process that makes almost all of it depends on solid catalysts, high temperatures and pressures, and very large, energy-intensive plants. Reaction heat is hard to remove from a packed solid catalyst bed, and mass transfer inside it limits how efficiently the catalyst is used, which keeps capital and operating costs high. A lower-cost alternative would make ammonia more accessible, particularly at smaller scale.</p>
+          <p>This project replaces the conventional solid catalyst with a liquid-metal catalyst, whose fluid nature is expected to improve both mass transfer and heat transfer and so make lower-cost production possible. Because no intrinsic kinetics have been published for this system, they must be measured experimentally. To make that possible I developed the piping and instrumentation diagram (P&amp;ID) for the experimental rig and carried out a HAZOP analysis to identify and manage its process hazards. I am now planning equipment procurement, after which I will build the complete setup and run the experiments that provide the kinetic data. The work is an industry collaboration with Amrark Ltd. under Dr. Noor Mohammad, together with a postgraduate student of UC Berkeley.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">Undergraduate</div>
+        <div>
+          <h3>Bayesian network model of urban gas pipeline failure</h3>
+          <p>Natural gas is central to Bangladesh's energy system, supplying homes, industry and power generation, and in Dhaka it is delivered through a dense, ageing distribution network running beneath crowded neighbourhoods. Leaks in such a network can lead to fires and explosions with serious consequences for people and property. Managing this risk normally starts from historical failure data, but Bangladesh has no systematic record of pipeline incidents and operational losses, so conventional statistical methods cannot be applied.</p>
+          <p>I built a noisy-OR Bayesian network in GeNIe to estimate leak frequency in Dhaka's distribution network despite this data gap. Instead of failure statistics, the model draws on the knowledge of gas-sector practitioners, whose judgements were elicited and converted into model parameters. It links the main causes of leakage, such as corrosion, third-party damage and equipment failure, to the likelihood of a leak, giving operators a structured, transparent way to quantify risk. This supports prioritising inspection and maintenance on the most vulnerable parts of the network, and the model can be updated as real incident data are collected.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">Collaborative project</div>
+        <div>
+          <h3>Degradation study of a flow-diverting stent</h3>
+          <div class="meta">Department of Mechanical Engineering, BUET</div>
+          <p>A collaborative research project on how a flow-diverting stent degrades under uncontrolled and controlled conditions, with a comparison of bioresorbable and metallic stents. My part was the computational analysis: I generated and analyzed stress-strain and degradation-rate curves from a COMSOL model of a biodegradable polymer (PCL) vascular scaffold, and assessed what its degradation kinetics mean physiologically.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="design">
+      <h2>Design projects</h2>
+
+      <div class="entry">
+        <div class="when">2023 – 2024</div>
+        <div>
+          <h3>Design of a 150 tonne-per-day sulfuric acid plant</h3>
+          <div class="meta">Team lead, undergraduate process design project, BUET</div>
+          <p>I led a four-member team through the full process design of a double-contact sulfuric acid plant, from market feasibility to economic analysis. The work covered the process flow and piping and instrumentation diagrams, material and energy balances, equipment sizing and hazard analysis, and involved working with industry professionals and equipment vendors.</p>
+          <p>My individual contribution was the four-bed SO₂ catalytic converter. I built a one-dimensional packed-bed reactor model, sized the beds, and used constrained nonlinear optimization (Eklund kinetics, SQP) to minimise the catalyst inventory, reducing total catalyst weight by 18.88% (17,588 to 14,268 kg). I also completed the converter's mechanical design as a pressure vessel to ASME Section VIII.</p>
+          <p class="meta"><a href="https://doi.org/10.13140/RG.2.2.23071.88485">Report</a> · <a href="https://github.com/TuhinMahmud181/sulfuric-acid-converter">Code</a></p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">Coursework</div>
+        <div>
+          <h3>Coal-fired power plant on Svalbard</h3>
+          <p>Modeled and optimized a pulverized coal power plant in Aspen HYSYS, with an economic analysis to identify the most efficient and cost-effective configuration.</p>
+          <p class="meta"><a href="https://doi.org/10.13140/RG.2.2.15685.87529">Report</a></p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">Coursework</div>
+        <div>
+          <h3>Acetic acid plant study</h3>
+          <p>Energy balance, waste management and environmental impact assessment for an acetic acid plant.</p>
+          <p class="meta"><a href="https://doi.org/10.13140/RG.2.2.22187.04642">Report</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="experience">
+      <h2>Experience</h2>
+
+      <div class="entry">
+        <div class="when">Aug 2026 – now</div>
+        <div>
+          <h3>Research Assistant</h3>
+          <div class="meta">Department of Chemical Engineering, BUET</div>
+          <p>Ammonia synthesis feasibility study, in collaboration with Amrark Ltd.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">Oct 2025 – now</div>
+        <div>
+          <h3>Research contract, solar ZLD desalination</h3>
+          <div class="meta">King Faisal University (Deanship of Scientific Research) with BUET</div>
+          <p>System design and modeling of the cascade solar still.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">Jun – Dec 2025</div>
+        <div>
+          <h3>Teaching Assistant</h3>
+          <div class="meta">Department of Chemical Engineering, BUET</div>
+          <p>Mentored four undergraduate thesis groups (three experimental, one computational), including wastewater treatment with activated carbon and pyrolysis oil characterization. Worked under Dr. Md. Iqbal Hossain and Dr. Md. Easir Arafat Khan.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="training">
+      <h2>Industrial training</h2>
+
+      <div class="entry">
+        <div class="when">10 days</div>
+        <div>
+          <h3>Eastern Refinery Limited</h3>
+          <p>Refinery site inspection, fire protection systems and quality control.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">1 day</div>
+        <div>
+          <h3>Samuda Chemical Complex Limited</h3>
+          <p>Caustic soda, adhesives and hydrogen peroxide production.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">1 day</div>
+        <div>
+          <h3>Titas Gas Field</h3>
+          <p>Natural gas extraction and purification.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="education">
+      <h2>Education</h2>
+
+      <div class="entry">
+        <div class="when">2024 – Dec 2026 (expected)</div>
+        <div>
+          <h3>MSc, Chemical Engineering</h3>
+          <div class="meta">BUET, Dhaka</div>
+          <p>Thesis supervisors: Dr. Mohidus Samad Khan and Dr. Sayeed Rushd</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="when">2019 – 2024</div>
+        <div>
+          <h3>BSc, Chemical Engineering</h3>
+          <div class="meta">BUET, Dhaka</div>
+          <p>CGPA 3.72/4.00, class rank 11 of 58</p>
+          <p>Thesis supervisor: Dr. Sayeda Sultana Razia</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="awards">
+      <h2>Awards and scholarships</h2>
+      <ul class="interests" aria-label="Awards and scholarships" style="margin-top:0">
+        <li>University Merit Award · 2023</li>
+        <li>Dean's List Award · 2019</li>
+        <li>SSC Scholarship · 2016</li>
+        <li>JSC Scholarship · 2013</li>
+        <li>PSC Scholarship · 2010</li>
+        <li>Scholars' Welfare Trust, Rajshahi · 2015 (Class 9, 1st place)</li>
+        <li>Scholars' Welfare Trust, Rajshahi · 2014 (Class 8, Talentpool)</li>
+        <li>Shadhin Shikkha Poribar, SEF Foundation · 2012</li>
+      </ul>
+    </section>
+
+    <section id="skills">
+      <h2>Tools and methods</h2>
+      <dl class="skills">
+        <dt>Modeling</dt><dd>MATLAB, Python, COMSOL, Aspen Plus, Aspen HYSYS</dd>
+        <dt>Analysis</dt><dd>Morris and Sobol sensitivity analysis, surrogate modeling, uncertainty quantification, constrained NLP</dd>
+        <dt>Risk</dt><dd>Bayesian networks (GeNIe), fuzzy-logic parameter elicitation</dd>
+        <dt>Other</dt><dd>LaTeX, AutoCAD</dd>
+      </dl>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>
