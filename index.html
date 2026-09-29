@@ -78,6 +78,10 @@
   h3 { font-family: var(--sans); font-weight: 600; font-size: 1.05rem; margin: 0; line-height: 1.4; }
   p { margin: 0 0 1rem; }
   .lede { font-size: 1.2rem; line-height: 1.6; }
+  main p:not(.meta) { font-size: 1.2rem; line-height: 1.6; }
+  @media (min-width: 821px) {
+    main p:not(.meta) { text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+  }
 
   .interests { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0; margin: 1.25rem 0 0; list-style: none; font-family: var(--sans); font-size: .88rem; }
   .interests li { border: 1px solid var(--rule); background: var(--panel); padding: .2rem .7rem; border-radius: 999px; }
