@@ -105,6 +105,8 @@
   }
   .pub .extra { font-family: var(--sans); font-size: .88rem; margin-left: .6rem; }
 
+  .supervisors { display: grid; grid-template-columns: 7.5em 1fr; gap: 0 .6rem; margin: .3rem 0 0; font-size: 1.2rem; line-height: 1.6; }
+  .supervisors dd { margin: 0; }
   .skills { display: grid; grid-template-columns: 9rem 1fr; gap: .5rem 1.25rem; font-size: 1rem; }
   .skills dt { font-family: var(--sans); font-weight: 600; font-size: .92rem; padding-top: .1rem; }
   .skills dd { margin: 0; }
@@ -355,7 +357,10 @@
         <div>
           <h3>MSc, Chemical Engineering</h3>
           <div class="meta">BUET, Dhaka</div>
-          <p>Thesis supervisor: Dr. Mohidus Samad Khan (BUET)<br>Co-supervisor: Dr. Sayeed Rushd (King Faisal University, Saudi Arabia)</p>
+          <dl class="supervisors">
+            <dt>Supervisor:</dt><dd>Dr. Mohidus Samad Khan (BUET)</dd>
+            <dt>Co-supervisor:</dt><dd>Dr. Sayeed Rushd (King Faisal University, Saudi Arabia)</dd>
+          </dl>
         </div>
       </div>
 
@@ -365,7 +370,9 @@
           <h3>BSc, Chemical Engineering</h3>
           <div class="meta">BUET, Dhaka</div>
           <p>CGPA 3.72/4.00, class rank 11 of 58</p>
-          <p>Thesis supervisor: Dr. Sayeda Sultana Razia</p>
+          <dl class="supervisors">
+            <dt>Supervisor:</dt><dd>Dr. Sayeda Sultana Razia</dd>
+          </dl>
         </div>
       </div>
     </section>
