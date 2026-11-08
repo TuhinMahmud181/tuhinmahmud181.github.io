@@ -71,6 +71,14 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .ctl { display: grid; gap: 10px; margin-top: 10px; }
 .ctl label { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13px; }
 .ctl label output { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+.runset label { grid-template-columns: 1fr auto; align-items: center; }
+.runset input[type=time], .runset input[type=number] { font: inherit; font-family: var(--font-mono); font-size: 13px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: #f6f8f8; color: var(--ink); }
+.runset input[type=number] { width: 84px; text-align: right; }
+.runset .unit { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
+.msg.err { color: var(--hot); }
+.pill.done { border-color: var(--accent); color: var(--accent); }
+.pill.empty { border-color: var(--hot); color: var(--hot); background: #fdeeea; }
+button:disabled { opacity: .5; cursor: default; }
 .ctl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
 .ctl .sub { font-size: 12px; color: var(--muted); grid-column: 1 / -1; }
 details { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
@@ -156,7 +164,7 @@ td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-wid
         <div class="lcd" id="lcd" aria-live="off"></div>
         <div class="btns">
           <button class="primary" id="bPlay" type="button">Pause</button>
-          <button id="bReset" type="button">Restart day at 07:00</button>
+          <button id="bReset" type="button">Restart run</button>
           <select id="sSpeed" aria-label="Simulation speed">
             <option value="60">×60 (1 h in 1 min)</option>
             <option value="600" selected>×600 (1 h in 6 s)</option>
@@ -173,11 +181,22 @@ td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-wid
       </div>
 
       <div class="card">
+        <h2>Run settings</h2>
+        <div class="ctl runset">
+          <label for="iStart">Start of operation <input type="time" id="iStart" value="07:00" step="300"></label>
+          <label for="iEnd">Finish of operation <input type="time" id="iEnd" value="17:00" step="300"></label>
+          <label for="iTank">Water in the feed tank at start <span class="unit"><input type="number" id="iTank" value="10" min="0.5" max="500" step="0.5"> L</span></label>
+        </div>
+        <div class="btns"><button class="primary" id="bNew" type="button">Start new run</button></div>
+        <div class="msg" id="runMsg"></div>
+      </div>
+
+      <div class="card">
         <h2>Operator controls</h2>
         <div class="ctl">
           <label for="iFeed">Valve V-1, feed rate <output id="oFeed"></output>
-            <input type="range" id="iFeed" min="2" max="10" step="0.5" value="5">
-            <span class="sub">Design range 2–10 L per 10 h, nominal 5</span>
+            <input type="range" id="iFeed" min="0" max="100" step="0.5" value="5">
+            <span class="sub">0–100 L per 10 h. The prototype's design range is 2–10, nominal 5.</span>
           </label>
           <label for="iPwm">Fan PWM (pin D9) <output id="oPwm"></output>
             <input type="range" id="iPwm" min="20" max="100" step="5" value="65">
@@ -188,7 +207,7 @@ td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-wid
           </label>
         </div>
         <div class="btns">
-          <button id="bRefill" type="button">Refill feed tank to 10 L</button>
+          <button id="bRefill" type="button">Refill feed tank</button>
           <button id="bEmpty" type="button">Empty brine jar</button>
         </div>
         <details>
@@ -213,7 +232,7 @@ td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-wid
   </div>
 
   <section class="kpis" aria-label="Summary">
-    <div class="kpi"><div class="lab">Evaporated since 07:00 (scale balance)</div><div class="num" id="kEvap">0<small>g</small></div><div class="note" id="kEvapN">feed used − brine collected</div></div>
+    <div class="kpi"><div class="lab" id="kEvapL">Evaporated since 07:00 (scale balance)</div><div class="num" id="kEvap">0<small>g</small></div><div class="note" id="kEvapN">feed used − brine collected</div></div>
     <div class="kpi"><div class="lab">Evaporation rate now</div><div class="num" id="kRate">0<small>g/h</small></div><div class="note" id="kRateN">model, all 6 stages</div></div>
     <div class="kpi sun"><div class="lab">Sunlight, RE-01</div><div class="num" id="kG">0<small>W/m²</small></div><div class="note" id="kGN">cover plane, 24° south</div></div>
     <div class="kpi"><div class="lab">Outlet air, TRH-02</div><div class="num" id="kOut">0<small>%RH</small></div><div class="note" id="kOutN"></div></div>
@@ -287,7 +306,7 @@ function wFrom(rh, T) { const p = rh * psat(T); return 0.622 * p / (PROP.P - p);
 function waterActivity(S) { return Math.max(0.72, 1 - 0.00054 * S - 0.0000011 * S * S); } // S in g/kg
 
 function defaultParams() {
-  return { feedL10h: 5, pwm: 65, salinity: 35, Gpk: 850, cloud: 15, Tmin: 19, Tmax: 29, rhDawn: 85, wind: 1.5, startHour: 7 };
+  return { feedL10h: 5, pwm: 65, salinity: 35, Gpk: 850, cloud: 15, Tmin: 19, Tmax: 29, rhDawn: 85, wind: 1.5, startHour: 7, endHour: 17, tankL: 10 };
 }
 
 // Weather for a clear-to-partly-cloudy November day in Dhaka. t = seconds since midnight.
@@ -314,7 +333,7 @@ function initState(p) {
   const wx = weather(p, t);
   return {
     t, t0: t, Tf: Array(6).fill(wx.Ta), Tc: wx.Ta, Ttank: wx.Ta, Tjar: wx.Ta,
-    Mtank: 7.5, Mjar: 0.30, Sjar: p.salinity, S: Array(6).fill(p.salinity),
+    Mtank: p.tankL, Mjar: 0.30, Sjar: p.salinity, S: Array(6).fill(p.salinity),
     cumFeed: 0, cumBrine: 0, cumEvap: 0, cumCond: 0,
     mIn: Array(6).fill(p.feedL10h / 36000), E: Array(6).fill(0), out: null,
   };
@@ -323,7 +342,7 @@ function initState(p) {
 function step(s, p, dt) {
   const wx = weather(p, s.t);
   const Tamb = wx.Ta;
-  const mFeed = s.Mtank > 0.25 ? p.feedL10h / 36000 : 0;        // kg/s (1 L ~ 1 kg)
+  const mFeed = s.Mtank > 1e-9 ? Math.min(p.feedL10h / 36000, s.Mtank / dt) : 0;   // kg/s (1 L ~ 1 kg); stops when the tank is empty
   const Q = 0.012 * p.pwm / 100, ma = PROP.rhoA * Q;            // fan flow
   const vg = Q / (GEO.W * GEO.gapH), vt = Q / (GEO.W * GEO.topH);
   const hg = 2.5 + 4.5 * vg, ht = 2.5 + 4.0 * vt, hr = 5.5;      // W/m2K
@@ -430,11 +449,15 @@ function step(s, p, dt) {
 <script>
 (() => {
 "use strict";
+let simAcc = 0;
+const fmtL = (v) => (Math.round(v * 10) / 10).toString();
 const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 const p = defaultParams();
-let s, logs, manual, running = !reduced, speed = 600, lastLogMin, lastManMin, tankAdded, jarRemoved, wt01_0, wt02_0, warn = "";
+let s, logs, manual, running = !reduced, speed = 600, lastLogMin, lastManMin, tankAdded, jarRemoved, wt01_0, wt02_0, warn = "", finished = false;
+const endT = () => p.endHour * 3600;
+const jarCap = () => Math.max(8, Math.ceil(p.tankL));
 
 /* ---------- sensors ---------- */
 const gauss = () => { let u = 0, v = 0; while (u === 0) u = Math.random(); while (v === 0) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
@@ -459,8 +482,11 @@ const hhmm = (t) => { const m = Math.floor(t / 60) % 1440; return String(Math.fl
 
 /* ---------- simulation control ---------- */
 function reset() {
-  s = initState(p); s.Mtank = 7.5;
-  logs = []; manual = []; tankAdded = 0; jarRemoved = 0;
+  s = initState(p); s.emptyAt = null;
+  logs = []; manual = []; tankAdded = 0; jarRemoved = 0; finished = false; simAcc = 0;
+  tankCapTxt.textContent = fmtL(p.tankL) + " L feed"; jarCapTxt.textContent = jarCap() + " L brine jar";
+  $("bRefill").textContent = "Refill feed tank to " + fmtL(p.tankL) + " L";
+  $("kEvapL").textContent = "Evaporated since " + hhmm(p.startHour * 3600) + " (scale balance)";
   step(s, p, 1); s.t -= 1;
   const r = read(); wt01_0 = r.WT01; wt02_0 = r.WT02;
   lastLogMin = -1; lastManMin = -1;
@@ -480,11 +506,14 @@ function record() {
 }
 function advance(simSeconds) {
   const dt = 5;
-  let n = Math.max(1, Math.round(simSeconds / dt));
+  simAcc += simSeconds;
+  let n = Math.floor(simAcc / dt);
+  simAcc -= n * dt;
   while (n-- > 0) {
-    step(s, p, dt);
+    if (s.t >= endT() - 1e-6) { running = false; finished = true; simAcc = 0; break; }
+    step(s, p, Math.min(dt, endT() - s.t));
+    if (!s.emptyAt && s.Mtank <= 1e-9) s.emptyAt = s.t;
     if (Math.floor(s.t / 60) !== lastLogMin) record();
-    if (s.t >= 24 * 3600 - 60) { running = false; break; }
   }
 }
 
@@ -634,7 +663,9 @@ el("rect", { x: tank.x, y: tank.y, width: tank.w, height: tank.h, rx: 8, fill: "
 const tankWater = el("rect", { x: tank.x + 2, width: tank.w - 4, rx: 6, fill: "url(#gWater)" }, tankG);
 el("rect", { x: 205, y: 150, width: 28, height: 9, rx: 2, fill: "#3d6f8a" }, tankG);
 for (let k = 1; k <= 4; k++) el("line", { x1: tank.x + tank.w - 12, x2: tank.x + tank.w - 4, y1: tank.y + tank.h - k * tank.h / 5, y2: tank.y + tank.h - k * tank.h / 5, stroke: "#6b8a98", "stroke-width": .8 }, tankG);
-el("text", { x: tank.x + 36, y: tank.y + 16, "font-size": 9, fill: "#3d5866", "font-family": "IBM Plex Sans" }, tankG).textContent = "10 L feed";
+const tankCapTxt = el("text", { x: tank.x + 36, y: tank.y + 16, "font-size": 9, fill: "#3d5866" }, tankG);
+const emptyTxt = el("text", { x: tank.x + tank.w / 2, y: tank.y + tank.h / 2 + 6, "text-anchor": "middle", "font-size": 18, "font-weight": 700, fill: "#c4472f", opacity: 0 }, tankG);
+emptyTxt.textContent = "EMPTY";
 // feed tube to Ø12 hole in north wall, onto P1
 const tubeD = `M${tank.x + tank.w} ${tank.y + tank.h - 8} L330 ${tank.y + tank.h - 8} L330 ${Y(272)} L${X(4)} ${Y(272)} L${X(6)} ${Y(262)}`;
 el("path", { d: tubeD, fill: "none", stroke: "#6c9fb5", "stroke-width": 5, "stroke-linejoin": "round" });
@@ -658,7 +689,7 @@ const wt02Txt = el("text", { x: 445, y: 700.5, "text-anchor": "end", "font-size"
 const jar = { x: 380, y: 612, w: 80, h: 77 };
 el("rect", { x: jar.x, y: jar.y, width: jar.w, height: jar.h, rx: 6, fill: "#fbf6ec", stroke: "#b49a76", "stroke-width": 1.3 }, jarG);
 const jarWater = el("rect", { x: jar.x + 2, width: jar.w - 4, rx: 5, fill: "url(#gBrine)" }, jarG);
-el("text", { x: jar.x + jar.w + 6, y: jar.y + 74, "font-size": 8.5, fill: "#7a5a2c" }, jarG).textContent = "8 L brine jar";
+const jarCapTxt = el("text", { x: jar.x + jar.w + 6, y: jar.y + 54, "font-size": 8.5, fill: "#7a5a2c" }, jarG);
 
 // DS18B20 probes: tank, jar
 function probe(x1, y1, x2, y2, tag) {
@@ -812,14 +843,14 @@ function updateScene(realDt) {
   bladeRot.setAttribute("transform", `rotate(${fanAngle})`);
 
   films.forEach((fm, i) => {
-    const m = o.mIn[i], wet = m > 1e-7, rel = Math.min(1, m / (10 / 36000));
+    const m = o.mIn[i], wet = m > 1e-7, rel = Math.min(1, Math.sqrt(m / (100 / 36000)));
     fm.base.setAttribute("opacity", wet ? .45 + .5 * rel : .08);
     fm.base.setAttribute("stroke-width", wet ? 1.8 + 1.8 * rel : 1);
     fm.flow.setAttribute("opacity", wet ? .9 : 0);
     fm.flow.setAttribute("stroke-dashoffset", -anim * (6 + 30 * rel));
   });
   dripEls.forEach((d, i) => {
-    const m = o.mIn[i + 1], wet = m > 1e-7, rate = 0.6 + 2.5 * Math.min(1, m / (10 / 36000));
+    const m = o.mIn[i + 1], wet = m > 1e-7, rate = 0.6 + 2.5 * Math.min(1, Math.sqrt(m / (100 / 36000)));
     d.dots.forEach((dot, k) => {
       const ph = (anim * rate + k / 3) % 1;
       dot.setAttribute("cy", lerp(Y(d.za), Y(d.zb) - 2, ph));
@@ -833,9 +864,10 @@ function updateScene(realDt) {
   valveHandle.setAttribute("transform", `rotate(${-90 + 90 * (p.feedL10h - 2) / 8} 330 ${vy})`);
 
   const r = read();
-  const lev = Math.max(0, Math.min(1, s.Mtank / 10));
+  const lev = Math.max(0, Math.min(1, s.Mtank / Math.max(p.tankL, s.Mtank, 1e-9)));
+  emptyTxt.setAttribute("opacity", s.Mtank <= 1e-9 ? 1 : 0);
   tankWater.setAttribute("y", tank.y + tank.h - 2 - (tank.h - 4) * lev); tankWater.setAttribute("height", (tank.h - 4) * lev);
-  const jl = Math.max(0, Math.min(1, s.Mjar / 8));
+  const jl = Math.max(0, Math.min(1, s.Mjar / jarCap()));
   jarWater.setAttribute("y", jar.y + jar.h - 2 - (jar.h - 4) * jl); jarWater.setAttribute("height", (jar.h - 4) * jl);
   wt01Txt.textContent = r.WT01 + " g"; wt02Txt.textContent = r.WT02 + " g"; fiTxt.textContent = r.FI01.toFixed(2);
   const lines = [
@@ -847,7 +879,7 @@ function updateScene(realDt) {
   lcdLines.forEach((t, k) => { t.textContent = lines[k]; });
   lapTxt.textContent = `evap.csv  ${logs.length} rows`;
   if (logs.length > 1) {
-    const h0 = 7, h1 = Math.max(13, logs[logs.length - 1].h);
+    const h0 = p.startHour, h1 = Math.max(h0 + 0.5, p.endHour);
     const emax = Math.max(50, ...logs.map((l) => l.evapMeas));
     const step_ = Math.max(1, Math.floor(logs.length / 60));
     const pts = [];
@@ -860,10 +892,11 @@ function updateScene(realDt) {
 function updatePanel() {
   const r = read(), o = s.out;
   $("pClock").textContent = hhmm(s.t);
-  $("pState").textContent = running ? "Running" : "Paused";
-  $("pState").className = "pill" + (running ? " run" : "");
+  $("pState").textContent = finished ? "Finished at " + hhmm(endT()) : (running ? "Running" : "Paused");
+  $("pState").className = "pill" + (finished ? " done" : (running ? " run" : ""));
   $("pSpeed").textContent = "×" + speed;
   $("bPlay").textContent = running ? "Pause" : "Run";
+  $("bPlay").disabled = finished;
   const rows = [
     ["TT-01", "feed tank", r.TT01.toFixed(2) + " °C"],
     ["TT-02", "brine jar", r.TT02.toFixed(2) + " °C"],
@@ -885,9 +918,16 @@ function updatePanel() {
   $("kOutN").textContent = r.TRH02T.toFixed(1) + " °C, inlet " + r.TRH01RH.toFixed(0) + " %RH";
   $("kFloor").innerHTML = s.Tf[5].toFixed(1) + "<small>°C</small>";
   $("kFloorN").textContent = (s.Tf[5] - o.wx.Ta >= 0 ? "+" : "") + (s.Tf[5] - o.wx.Ta).toFixed(1) + " K vs air · salinity " + s.S[5].toFixed(0) + " g/kg";
-  $("kTank").innerHTML = Math.max(0, s.Mtank).toFixed(2) + "<small>L</small>";
-  const hrs = o.mFeed > 0 ? (s.Mtank - 0.25) / (o.mFeed * 3600) : 0;
-  $("kTankN").textContent = o.mFeed > 0 ? "empty in about " + hrs.toFixed(1) + " h" : "tank empty: feed stopped";
+  const isEmpty = s.Mtank <= 1e-9;
+  $("kTank").innerHTML = isEmpty ? "EMPTY" : Math.max(0, s.Mtank).toFixed(2) + "<small>L</small>";
+  $("kTank").style.color = isEmpty ? "var(--hot)" : "";
+  const left = Math.max(0, endT() - s.t), need = p.feedL10h / 36000 * left;
+  let tn;
+  if (isEmpty) tn = "ran empty at " + hhmm(s.emptyAt) + ", feed stopped";
+  else if (p.feedL10h <= 0) tn = "valve closed, no feed";
+  else if (need > s.Mtank) tn = "will run empty at about " + hhmm(s.t + s.Mtank / (p.feedL10h / 36000)) + ", before finish " + hhmm(endT());
+  else tn = "enough until finish " + hhmm(endT()) + " (" + (s.Mtank - need).toFixed(2) + " L spare)";
+  $("kTankN").textContent = tn;
 
   const names = ["P1 (top)", "P2", "P3", "P4", "P5", "Floor"];
   const maxE = Math.max(1e-9, ...o.E);
@@ -897,8 +937,9 @@ function updatePanel() {
     return `<tr><td>${n}</td><td>${m.toFixed(0)}</td><td>${s.Tf[i].toFixed(1)}</td><td>${o.gapT[g].toFixed(1)} / ${(100 * o.gapRH[g]).toFixed(0)}</td><td>${e.toFixed(1)}</td><td class="bar"><div style="width:${Math.max(0, 100 * o.E[i] / maxE).toFixed(0)}%"></div></td><td>${s.S[i].toFixed(1)}</td><td>${st}</td></tr>`;
   }).join("");
 
-  warn = s.Mtank <= 0.25 ? "Feed tank empty" : (s.Mjar > 7.6 ? "Brine jar nearly full" : (s.S[5] > 260 ? "Salt crystallising on floor" : ""));
+  warn = isEmpty ? "Feed tank EMPTY since " + hhmm(s.emptyAt) : (s.Mjar > 0.95 * jarCap() ? "Brine jar nearly full" : (s.S[5] > 260 ? "Salt crystallising on floor" : ""));
   $("pWarn").hidden = !warn; $("pWarn").textContent = warn;
+  $("pWarn").className = "pill " + (isEmpty ? "empty" : "warn");
 }
 function renderManual() {
   $("manual").innerHTML = manual.slice().reverse().map((m) => `<tr><td>${hhmm(m.t)}</td><td>${m.WT01}</td><td>${m.WT02}</td><td>${m.evap}</td><td>${m.FI01.toFixed(2)}</td><td>${m.AI01 === null ? "–" : m.AI01.toFixed(1)}</td></tr>`).join("");
@@ -916,7 +957,8 @@ function chart(id, lgId, series, opt) {
   const { ctx, w, h } = setupCanvas($(id));
   $(lgId).innerHTML = series.map((sr) => `<span style="color:${sr.color}"><i class="${sr.dash ? "dash" : ""}" style="background:${sr.color}"></i><span style="color:var(--muted)">${sr.name}</span></span>`).join("");
   const L = 44, R = 24, T = 8, B = 24, pw = w - L - R, ph = h - T - B;
-  const x0 = 7, x1 = Math.max(18, Math.ceil(logs.length ? logs[logs.length - 1].h : 18));
+  const x0 = Math.floor(p.startHour), x1 = Math.max(x0 + 1, Math.ceil(p.endHour));
+  const xs = x1 - x0 > 12 ? 3 : (x1 - x0 > 6 ? 2 : 1);
   let lo = Infinity, hi = -Infinity;
   series.forEach((sr) => sr.data.forEach(([, y]) => { if (y < lo) lo = y; if (y > hi) hi = y; }));
   if (!isFinite(lo)) { lo = 0; hi = 1; }
@@ -929,7 +971,7 @@ function chart(id, lgId, series, opt) {
   ctx.textAlign = "right"; ctx.textBaseline = "middle";
   for (let y = lo; y <= hi + st / 2; y += st) { ctx.beginPath(); ctx.moveTo(L, py(y)); ctx.lineTo(L + pw, py(y)); ctx.stroke(); ctx.fillText((st < 1 ? y.toFixed(1) : y.toFixed(0)), L - 6, py(y)); }
   ctx.textAlign = "center"; ctx.textBaseline = "top";
-  for (let x = x0 + 1; x <= x1; x += 2) { ctx.fillText(String(x).padStart(2, "0") + ":00", px(x), T + ph + 6); }
+  for (let x = x0; x <= x1; x += xs) { ctx.fillText(String(x).padStart(2, "0") + ":00", px(x), T + ph + 6); }
   ctx.save(); ctx.translate(11, T + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(opt.unit, 0, 0); ctx.restore();
   series.forEach((sr, k) => {
     if (!sr.data.length) return;
@@ -982,11 +1024,25 @@ bindRange("iTmin", "oTmin", "Tmin", (v) => v.toFixed(1) + " °C");
 bindRange("iTmax", "oTmax", "Tmax", (v) => v.toFixed(1) + " °C");
 bindRange("iRh", "oRh", "rhDawn", (v) => v + " %");
 bindRange("iWind", "oWind", "wind", (v) => v.toFixed(1) + " m/s");
-$("bPlay").addEventListener("click", () => { if (s.t >= 24 * 3600 - 60) return; running = !running; updatePanel(); });
-$("bReset").addEventListener("click", () => { reset(); drawCharts(); updatePanel(); renderManual(); updateScene(0); });
+$("bPlay").addEventListener("click", () => { if (finished) return; running = !running; updatePanel(); });
+function readRun() {
+  const toH = (v) => { const [h, m] = (v || "").split(":").map(Number); return isFinite(h) && isFinite(m) ? h + m / 60 : NaN; };
+  const st = toH($("iStart").value), en = toH($("iEnd").value), vol = parseFloat($("iTank").value);
+  const m = $("runMsg"); m.className = "msg err";
+  if (!isFinite(st) || !isFinite(en)) { m.textContent = "Enter both a start and a finish time."; return false; }
+  if (en - st < 0.5) { m.textContent = "Finish must be at least 30 min after the start, on the same day."; return false; }
+  if (!(vol > 0) || vol > 500) { m.textContent = "Feed tank volume must be between 0.5 and 500 L."; return false; }
+  p.startHour = st; p.endHour = en; p.tankL = vol;
+  m.className = "msg";
+  m.textContent = "Run " + hhmm(st * 3600) + "–" + hhmm(en * 3600) + " (" + (en - st).toFixed(1) + " h), " + fmtL(vol) + " L in the tank. At the current feed rate the run needs " + (p.feedL10h / 10 * (en - st)).toFixed(1) + " L.";
+  return true;
+}
+function newRun() { if (!readRun()) return; reset(); running = !reduced; drawCharts(); updatePanel(); renderManual(); updateScene(0); }
+$("bNew").addEventListener("click", newRun);
+$("bReset").addEventListener("click", newRun);
 $("sSpeed").addEventListener("change", (e) => { speed = parseInt(e.target.value, 10); updatePanel(); });
-$("bRefill").addEventListener("click", () => { const add = 10 - s.Mtank; if (add > 0) { s.Mtank = 10; tankAdded += Math.round(add * 1000); } flash("Tank refilled to 10 L (+" + Math.round(add * 1000) + " g noted on the log sheet)"); });
-$("bEmpty").addEventListener("click", () => { const rem = s.Mjar - 0.3; if (rem > 0) { s.Mjar = 0.3; jarRemoved += Math.round(rem * 1000); } flash("Brine jar emptied to 300 g (" + Math.round(Math.max(0, rem) * 1000) + " g removed, noted)"); });
+$("bRefill").addEventListener("click", () => { if (finished) return; const add = p.tankL - s.Mtank; if (add > 0) { s.Mtank = p.tankL; s.emptyAt = null; tankAdded += Math.round(add * 1000); } flash("Tank refilled to " + fmtL(p.tankL) + " L (+" + Math.round(Math.max(0, add) * 1000) + " g noted on the log sheet)"); });
+$("bEmpty").addEventListener("click", () => { if (finished) return; const rem = s.Mjar - 0.3; if (rem > 0) { s.Mjar = 0.3; jarRemoved += Math.round(rem * 1000); } flash("Brine jar emptied to 300 g (" + Math.round(Math.max(0, rem) * 1000) + " g removed, noted)"); });
 function flash(t) { $("msg").textContent = t; clearTimeout(flash.h); flash.h = setTimeout(() => { $("msg").textContent = ""; }, 4000); }
 function csvLogger() {
   const head = "time,TT01_C,TT02_C,TT03_C,TRH01_T_C,TRH01_RH_pct,TRH02_T_C,TRH02_RH_pct,RE01_Wm2,ST01_rpm";
@@ -1003,8 +1059,9 @@ $("bCopy").addEventListener("click", () => copy(csvLogger(), "Logger CSV"));
 $("bCopyMan").addEventListener("click", () => copy(csvManual(), "Manual log sheet"));
 
 /* ---------- loop ---------- */
+readRun();
 reset();
-advance(5 * 3600);        // open at noon with the morning already logged
+advance(Math.min(5, (p.endHour - p.startHour) / 2) * 3600);   // open part-way through the run with data already logged
 drawCharts(); updatePanel(); updateScene(0);
 let last = performance.now(), panelT = 0, chartT = 0;
 function frame(now) {
