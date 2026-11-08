@@ -72,8 +72,8 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .ctl label { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13px; }
 .ctl label output { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
 .runset label { grid-template-columns: 1fr auto; align-items: center; }
-.runset input[type=time], .runset input[type=number] { font: inherit; font-family: var(--font-mono); font-size: 13px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: #f6f8f8; color: var(--ink); }
-.runset input[type=number] { width: 84px; text-align: right; }
+.runset select { font: inherit; font-family: var(--font-mono); font-size: 13px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: #f6f8f8; color: var(--ink); }
+.runset select { min-width: 92px; }
 .runset .unit { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
 .msg.err { color: var(--hot); }
 .pill.done { border-color: var(--accent); color: var(--accent); }
@@ -183,9 +183,12 @@ td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-wid
       <div class="card">
         <h2>Run settings</h2>
         <div class="ctl runset">
-          <label for="iStart">Start of operation <input type="time" id="iStart" value="07:00" step="300"></label>
-          <label for="iEnd">Finish of operation <input type="time" id="iEnd" value="17:00" step="300"></label>
-          <label for="iTank">Water in the feed tank at start <span class="unit"><input type="number" id="iTank" value="10" min="0.5" max="500" step="0.5"> L</span></label>
+          <label for="iStart">Day starts at <select id="iStart">
+            <option value="7" selected>7 am</option><option value="8">8 am</option><option value="9">9 am</option><option value="10">10 am</option><option value="11">11 am</option><option value="12">12 pm</option><option value="13">1 pm</option></select></label>
+          <label for="iEnd">Day ends at <select id="iEnd">
+            <option value="14">2 pm</option><option value="15">3 pm</option><option value="16">4 pm</option><option value="17" selected>5 pm</option><option value="18">6 pm</option><option value="19">7 pm</option></select></label>
+          <label for="iTank">Water in the feed tank <select id="iTank">
+            <option value="1">1 L</option><option value="2">2 L</option><option value="3">3 L</option><option value="4">4 L</option><option value="5">5 L</option><option value="10" selected>10 L</option><option value="15">15 L</option><option value="20">20 L</option><option value="25">25 L</option><option value="30">30 L</option><option value="35">35 L</option><option value="40">40 L</option><option value="45">45 L</option><option value="50">50 L</option></select></label>
         </div>
         <div class="btns"><button class="primary" id="bNew" type="button">Start new run</button></div>
         <div class="msg" id="runMsg"></div>
@@ -197,6 +200,7 @@ td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-wid
           <label for="iFeed">Valve V-1, feed rate <output id="oFeed"></output>
             <input type="range" id="iFeed" min="0" max="100" step="0.5" value="5">
             <span class="sub">0–100 L per 10 h. The prototype's design range is 2–10, nominal 5.</span>
+            <span class="sub" id="oLast"></span>
           </label>
           <label for="iPwm">Fan PWM (pin D9) <output id="oPwm"></output>
             <input type="range" id="iPwm" min="20" max="100" step="5" value="65">
@@ -484,9 +488,9 @@ const hhmm = (t) => { const m = Math.floor(t / 60) % 1440; return String(Math.fl
 function reset() {
   s = initState(p); s.emptyAt = null;
   logs = []; manual = []; tankAdded = 0; jarRemoved = 0; finished = false; simAcc = 0;
-  tankCapTxt.textContent = fmtL(p.tankL) + " L feed"; jarCapTxt.textContent = jarCap() + " L brine jar";
+  jarCapTxt.textContent = jarCap() + " L brine jar";
   $("bRefill").textContent = "Refill feed tank to " + fmtL(p.tankL) + " L";
-  $("kEvapL").textContent = "Evaporated since " + hhmm(p.startHour * 3600) + " (scale balance)";
+  $("kEvapL").textContent = "Evaporated since " + ampm(p.startHour) + " (scale balance)";
   step(s, p, 1); s.t -= 1;
   const r = read(); wt01_0 = r.WT01; wt02_0 = r.WT02;
   lastLogMin = -1; lastManMin = -1;
@@ -866,6 +870,7 @@ function updateScene(realDt) {
   const r = read();
   const lev = Math.max(0, Math.min(1, s.Mtank / Math.max(p.tankL, s.Mtank, 1e-9)));
   emptyTxt.setAttribute("opacity", s.Mtank <= 1e-9 ? 1 : 0);
+  tankCapTxt.textContent = (s.Mtank <= 1e-9 ? "0" : Math.max(0, s.Mtank).toFixed(1)) + " of " + fmtL(p.tankL) + " L";
   tankWater.setAttribute("y", tank.y + tank.h - 2 - (tank.h - 4) * lev); tankWater.setAttribute("height", (tank.h - 4) * lev);
   const jl = Math.max(0, Math.min(1, s.Mjar / jarCap()));
   jarWater.setAttribute("y", jar.y + jar.h - 2 - (jar.h - 4) * jl); jarWater.setAttribute("height", (jar.h - 4) * jl);
@@ -892,7 +897,7 @@ function updateScene(realDt) {
 function updatePanel() {
   const r = read(), o = s.out;
   $("pClock").textContent = hhmm(s.t);
-  $("pState").textContent = finished ? "Finished at " + hhmm(endT()) : (running ? "Running" : "Paused");
+  $("pState").textContent = finished ? "Day ended at " + ampm(p.endHour) : (running ? "Running" : "Paused");
   $("pState").className = "pill" + (finished ? " done" : (running ? " run" : ""));
   $("pSpeed").textContent = "×" + speed;
   $("bPlay").textContent = running ? "Pause" : "Run";
@@ -923,10 +928,10 @@ function updatePanel() {
   $("kTank").style.color = isEmpty ? "var(--hot)" : "";
   const left = Math.max(0, endT() - s.t), need = p.feedL10h / 36000 * left;
   let tn;
-  if (isEmpty) tn = "ran empty at " + hhmm(s.emptyAt) + ", feed stopped";
+  if (isEmpty) tn = "ran empty at " + ampm(s.emptyAt / 3600) + ", feed stopped";
   else if (p.feedL10h <= 0) tn = "valve closed, no feed";
-  else if (need > s.Mtank) tn = "will run empty at about " + hhmm(s.t + s.Mtank / (p.feedL10h / 36000)) + ", before finish " + hhmm(endT());
-  else tn = "enough until finish " + hhmm(endT()) + " (" + (s.Mtank - need).toFixed(2) + " L spare)";
+  else if (need > s.Mtank) tn = "will run empty at about " + ampm((s.t + s.Mtank / (p.feedL10h / 36000)) / 3600) + ", before the day ends at " + ampm(p.endHour);
+  else tn = "enough until " + ampm(p.endHour) + " (" + (s.Mtank - need).toFixed(2) + " L spare)";
   $("kTankN").textContent = tn;
 
   const names = ["P1 (top)", "P2", "P3", "P4", "P5", "Floor"];
@@ -937,7 +942,7 @@ function updatePanel() {
     return `<tr><td>${n}</td><td>${m.toFixed(0)}</td><td>${s.Tf[i].toFixed(1)}</td><td>${o.gapT[g].toFixed(1)} / ${(100 * o.gapRH[g]).toFixed(0)}</td><td>${e.toFixed(1)}</td><td class="bar"><div style="width:${Math.max(0, 100 * o.E[i] / maxE).toFixed(0)}%"></div></td><td>${s.S[i].toFixed(1)}</td><td>${st}</td></tr>`;
   }).join("");
 
-  warn = isEmpty ? "Feed tank EMPTY since " + hhmm(s.emptyAt) : (s.Mjar > 0.95 * jarCap() ? "Brine jar nearly full" : (s.S[5] > 260 ? "Salt crystallising on floor" : ""));
+  warn = isEmpty ? "Feed tank EMPTY since " + ampm(s.emptyAt / 3600) : (s.Mjar > 0.95 * jarCap() ? "Brine jar nearly full" : (s.S[5] > 260 ? "Salt crystallising on floor" : ""));
   $("pWarn").hidden = !warn; $("pWarn").textContent = warn;
   $("pWarn").className = "pill " + (isEmpty ? "empty" : "warn");
 }
@@ -1025,20 +1030,30 @@ bindRange("iTmax", "oTmax", "Tmax", (v) => v.toFixed(1) + " °C");
 bindRange("iRh", "oRh", "rhDawn", (v) => v + " %");
 bindRange("iWind", "oWind", "wind", (v) => v.toFixed(1) + " m/s");
 $("bPlay").addEventListener("click", () => { if (finished) return; running = !running; updatePanel(); });
+const ampm = (h) => { const hh = Math.floor(h) % 24, m = Math.round((h % 1) * 60); return ((hh + 11) % 12 + 1) + (m ? ":" + String(m).padStart(2, "0") : "") + (hh < 12 ? " am" : " pm"); };
+const dur = (hrs) => { const m = Math.round(hrs * 60); return Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") + " min"; };
+function planText(st, en, vol) {
+  const q = p.feedL10h / 10;                  // L per hour
+  const span = en - st;
+  if (q <= 0) return "Valve closed: no water flows, so the tank stays full.";
+  const last = vol / q;
+  if (last < span) return "At " + fmtL(p.feedL10h) + " L per 10 h (" + q.toFixed(2) + " L/h), " + fmtL(vol) + " L lasts " + dur(last) + ": the tank runs empty at " + ampm(st + last) + ", before the day ends at " + ampm(en) + ".";
+  return "At " + fmtL(p.feedL10h) + " L per 10 h (" + q.toFixed(2) + " L/h), " + fmtL(vol) + " L lasts " + dur(last) + ": enough for the whole day, " + (vol - q * span).toFixed(1) + " L left at " + ampm(en) + ".";
+}
 function readRun() {
-  const toH = (v) => { const [h, m] = (v || "").split(":").map(Number); return isFinite(h) && isFinite(m) ? h + m / 60 : NaN; };
-  const st = toH($("iStart").value), en = toH($("iEnd").value), vol = parseFloat($("iTank").value);
-  const m = $("runMsg"); m.className = "msg err";
-  if (!isFinite(st) || !isFinite(en)) { m.textContent = "Enter both a start and a finish time."; return false; }
-  if (en - st < 0.5) { m.textContent = "Finish must be at least 30 min after the start, on the same day."; return false; }
-  if (!(vol > 0) || vol > 500) { m.textContent = "Feed tank volume must be between 0.5 and 500 L."; return false; }
-  p.startHour = st; p.endHour = en; p.tankL = vol;
-  m.className = "msg";
-  m.textContent = "Run " + hhmm(st * 3600) + "–" + hhmm(en * 3600) + " (" + (en - st).toFixed(1) + " h), " + fmtL(vol) + " L in the tank. At the current feed rate the run needs " + (p.feedL10h / 10 * (en - st)).toFixed(1) + " L.";
+  p.startHour = parseFloat($("iStart").value); p.endHour = parseFloat($("iEnd").value); p.tankL = parseFloat($("iTank").value);
+  $("runMsg").className = "msg";
+  $("runMsg").textContent = "Day " + ampm(p.startHour) + " to " + ampm(p.endHour) + " (" + (p.endHour - p.startHour) + " h). " + planText(p.startHour, p.endHour, p.tankL);
   return true;
+}
+function previewPlan() {
+  const st = parseFloat($("iStart").value), en = parseFloat($("iEnd").value), vol = parseFloat($("iTank").value);
+  $("oLast").textContent = planText(st, en, vol);
 }
 function newRun() { if (!readRun()) return; reset(); running = !reduced; drawCharts(); updatePanel(); renderManual(); updateScene(0); }
 $("bNew").addEventListener("click", newRun);
+["iStart", "iEnd", "iTank"].forEach((id) => $(id).addEventListener("change", () => { previewPlan(); $("runMsg").className = "msg"; $("runMsg").textContent = "Press Start new run to use these settings."; }));
+$("iFeed").addEventListener("input", previewPlan);
 $("bReset").addEventListener("click", newRun);
 $("sSpeed").addEventListener("change", (e) => { speed = parseInt(e.target.value, 10); updatePanel(); });
 $("bRefill").addEventListener("click", () => { if (finished) return; const add = p.tankL - s.Mtank; if (add > 0) { s.Mtank = p.tankL; s.emptyAt = null; tankAdded += Math.round(add * 1000); } flash("Tank refilled to " + fmtL(p.tankL) + " L (+" + Math.round(Math.max(0, add) * 1000) + " g noted on the log sheet)"); });
@@ -1060,6 +1075,7 @@ $("bCopyMan").addEventListener("click", () => copy(csvManual(), "Manual log shee
 
 /* ---------- loop ---------- */
 readRun();
+previewPlan();
 reset();
 advance(Math.min(5, (p.endHour - p.startHour) / 2) * 3600);   // open part-way through the run with data already logged
 drawCharts(); updatePanel(); updateScene(0);
