@@ -140,7 +140,7 @@ td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-wid
       <p class="byline">Tuhin Mahmud · MSc research, Department of Chemical Engineering, BUET · <a href="https://github.com/TuhinMahmud181/ZLDD_Solar_Still_Modeling">full MATLAB model</a></p>
     </div>
     <div class="pills">
-      <span class="pill" id="pClock">07:00</span>
+      <span class="pill" id="pClock" title="Bangladesh Standard Time, UTC+6">7:00 am Dhaka time</span>
       <span class="pill run" id="pState">Running</span>
       <span class="pill" id="pSpeed">×600</span>
       <span class="pill warn" id="pWarn" hidden></span>
@@ -482,6 +482,7 @@ function evapMeasured(r) {
   const got = r.WT02 + jarRemoved - wt02_0;
   return fed - got;
 }
+const clock = (t) => { const m = Math.floor(t / 60) % 1440, h = Math.floor(m / 60); return ((h + 11) % 12 + 1) + ":" + String(m % 60).padStart(2, "0") + (h < 12 ? " am" : " pm"); };
 const hhmm = (t) => { const m = Math.floor(t / 60) % 1440; return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); };
 
 /* ---------- simulation control ---------- */
@@ -882,7 +883,7 @@ function updateScene(realDt) {
   jarWater.setAttribute("y", jar.y + jar.h - 2 - (jar.h - 4) * jl); jarWater.setAttribute("height", (jar.h - 4) * jl);
   wt01Txt.textContent = r.WT01 + " g"; wt02Txt.textContent = r.WT02 + " g"; fiTxt.textContent = r.FI01.toFixed(2);
   const lines = [
-    `${hhmm(s.t)} G=${r.RE01.toFixed(0).padStart(4)}W/m2`,
+    `${clock(s.t).replace(" ", "")} G=${r.RE01.toFixed(0).padStart(4)}W/m2`,
     `TT ${r.TT01.toFixed(1)} ${r.TT02.toFixed(1)} ${r.TT03.toFixed(1)}`,
     `In ${r.TRH01T.toFixed(1)}C ${r.TRH01RH.toFixed(0)}%`,
     `Out ${r.TRH02T.toFixed(1)}C ${r.TRH02RH.toFixed(0)}% ${r.ST01}`,
@@ -902,7 +903,7 @@ function updateScene(realDt) {
 /* ---------- side panel ---------- */
 function updatePanel() {
   const r = read(), o = s.out;
-  $("pClock").textContent = hhmm(s.t);
+  $("pClock").textContent = clock(s.t) + " Dhaka time";
   $("pState").textContent = finished ? "Day ended at " + ampm(p.endHour) : (running ? "Running" : "Paused");
   $("pState").className = "pill" + (finished ? " done" : (running ? " run" : ""));
   $("pSpeed").textContent = "×" + speed;
@@ -918,7 +919,7 @@ function updatePanel() {
     ["ST-01", finished ? "fan" : "fan, PWM " + p.pwm + " %", finished ? "stopped" : r.ST01 + " RPM"],
   ];
   $("lcd").innerHTML = rows.map(([a, b, c]) => `<div class="row"><span>${a}</span><span>${b}</span><span>${c}</span></div>`).join("") +
-    `<div class="foot"><span>${hhmm(s.t)} · 1 row/min</span><span>SD: ${logs.length} rows</span></div>`;
+    `<div class="foot"><span>${clock(s.t)} · 1 row/min</span><span>SD: ${logs.length} rows</span></div>`;
 
   const em = evapMeasured(r);
   $("kEvap").innerHTML = em.toFixed(0) + "<small>g</small>";
@@ -955,7 +956,7 @@ function updatePanel() {
   $("pWarn").className = "pill " + (isEmpty ? "empty" : "warn");
 }
 function renderManual() {
-  $("manual").innerHTML = manual.slice().reverse().map((m) => `<tr><td>${hhmm(m.t)}</td><td>${m.WT01}</td><td>${m.WT02}</td><td>${m.evap}</td><td>${m.FI01.toFixed(2)}</td><td>${m.AI01 === null ? "–" : m.AI01.toFixed(1)}</td></tr>`).join("");
+  $("manual").innerHTML = manual.slice().reverse().map((m) => `<tr><td>${clock(m.t)}</td><td>${m.WT01}</td><td>${m.WT02}</td><td>${m.evap}</td><td>${m.FI01.toFixed(2)}</td><td>${m.AI01 === null ? "–" : m.AI01.toFixed(1)}</td></tr>`).join("");
 }
 
 /* ---------- charts ---------- */
@@ -984,7 +985,7 @@ function chart(id, lgId, series, opt) {
   ctx.textAlign = "right"; ctx.textBaseline = "middle";
   for (let y = lo; y <= hi + st / 2; y += st) { ctx.beginPath(); ctx.moveTo(L, py(y)); ctx.lineTo(L + pw, py(y)); ctx.stroke(); ctx.fillText((st < 1 ? y.toFixed(1) : y.toFixed(0)), L - 6, py(y)); }
   ctx.textAlign = "center"; ctx.textBaseline = "top";
-  for (let x = x0; x <= x1; x += xs) { ctx.fillText(String(x).padStart(2, "0") + ":00", px(x), T + ph + 6); }
+  for (let x = x0; x <= x1; x += xs) { ctx.fillText(((x + 11) % 12 + 1) + (x < 12 ? " am" : " pm"), px(x), T + ph + 6); }
   ctx.save(); ctx.translate(11, T + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(opt.unit, 0, 0); ctx.restore();
   series.forEach((sr, k) => {
     if (!sr.data.length) return;
