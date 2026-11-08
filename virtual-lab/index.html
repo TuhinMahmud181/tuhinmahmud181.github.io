@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZLDD Virtual Lab · Tuhin Mahmud</title>
+<meta name="description" content="Interactive simulation of a bench-scale zero liquid discharge cascade solar still, by Tuhin Mahmud (BUET).">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚗️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Lab-bench instrument panel: slate ink on cool paper, water-blue accent, amber for sun and heat. */
+  --paper: #eef2f1;
+  --panel: #ffffff;
+  --ink: #18262c;
+  --muted: #5b6b71;
+  --line: #d4dcdb;
+  --accent: #0d6f8f;
+  --sun: #d98a1c;
+  --hot: #c4472f;
+  --ok: #2f8a57;
+  --lcd-bg: #1b2a22;
+  --lcd-ink: #b8f07a;
+  --font-body: "Instrument Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  /* layout: scene + instrument sidebar on top, live charts and stage table below */
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.back { font-size: 13px; margin-bottom: 6px; }
+.back a { color: var(--accent); text-decoration: none; }
+.back a:hover { text-decoration: underline; }
+.byline { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.byline a { color: var(--accent); }
+.wrap { max-width: 1480px; margin: 0 auto; padding: 18px 20px 40px; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { font-family: var(--font-mono); font-size: 13px; padding: 5px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.pill.run { border-color: var(--ok); color: var(--ok); }
+.pill.warn { border-color: var(--sun); color: #9a5c06; background: #fff6e8; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.scene { padding: 0; overflow: hidden; position: relative; }
+.scene svg { display: block; width: 100%; height: auto; }
+.scene .cap { padding: 8px 14px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.key i { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
+#scene text { font-family: var(--font-body); }
+#scene text.mono { font-family: var(--font-mono); }
+#tip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; max-width: 260px; opacity: 0; transition: opacity .12s; z-index: 5; }
+#tip b { font-family: var(--font-mono); }
+#tip .v { font-family: var(--font-mono); font-size: 15px; color: var(--lcd-ink); }
+.side { display: grid; gap: 16px; }
+.lcd { background: var(--lcd-bg); color: var(--lcd-ink); border-radius: 8px; padding: 10px 12px; font-family: var(--font-mono); font-size: 13px; display: grid; gap: 2px; border: 3px solid #2f3a3e; box-shadow: inset 0 0 18px rgba(0,0,0,.35); }
+.lcd .row { display: grid; grid-template-columns: 62px 1fr auto; gap: 8px; font-variant-numeric: tabular-nums; }
+.lcd .row span:first-child { color: #7fbf55; }
+.lcd .row span:last-child { text-align: right; }
+.lcd .foot { margin-top: 6px; color: #7fbf55; display: flex; justify-content: space-between; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+button, select { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--line); background: #f6f8f8; color: var(--ink); cursor: pointer; }
+button:hover, select:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--sun); outline-offset: 2px; }
+.ctl { display: grid; gap: 10px; margin-top: 10px; }
+.ctl label { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13px; }
+.ctl label output { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+.ctl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.ctl .sub { font-size: 12px; color: var(--muted); grid-column: 1 / -1; }
+details { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
+summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; border-top: 3px solid var(--accent); }
+.kpi.sun { border-top-color: var(--sun); }
+.kpi.hot { border-top-color: var(--hot); }
+.kpi .lab { font-size: 12px; color: var(--muted); }
+.kpi .num { font-family: var(--font-mono); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kpi .num small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+.kpi .note { font-size: 12px; color: var(--muted); }
+.charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.chart h3 { font-size: 14px; font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin: 6px 0 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.dash { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px) !important; height: 2px; }
+canvas { width: 100%; height: 220px; display: block; }
+.bottom { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 12px; color: var(--muted); font-weight: 500; }
+td.bar { width: 26%; }
+td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-width: 2px; }
+.chip { display: inline-block; font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid; }
+.chip.wet { color: var(--accent); border-color: var(--accent); }
+.chip.dry { color: var(--hot); border-color: var(--hot); }
+.chip.low { color: #9a5c06; border-color: var(--sun); }
+.manual { max-height: 220px; overflow-y: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.manual table { font-family: var(--font-mono); font-size: 12px; }
+.manual th { position: sticky; top: 0; background: #fbfaf5; }
+.notes ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink); }
+.notes li { margin: 4px 0; max-width: 72ch; }
+.notes p { margin: 8px 0 0; color: var(--muted); max-width: 72ch; }
+#csvBox { width: 100%; height: 120px; font-family: var(--font-mono); font-size: 11px; margin-top: 8px; display: none; }
+.msg { font-size: 12px; color: var(--ok); min-height: 16px; margin-top: 6px; }
+@media (max-width: 1100px) {
+  .top, .bottom { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .charts { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wrap { padding: 12px 16px 32px; }
+}
+@media (prefers-reduced-motion: reduce) { #tip { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="back"><a href="../">← Tuhin Mahmud</a></div>
+      <h1>ZLDD Virtual Lab</h1>
+      <p>Acrylic bench prototype of the ZLDD cascade solar still: 5 clear PMMA plates and a black floor, 120 mm suction fan, ambient inlet air. A simulated outdoor test day in Dhaka, November, with the instruments from the P&amp;ID.</p>
+      <p class="byline">Tuhin Mahmud · MSc research, Department of Chemical Engineering, BUET · <a href="https://github.com/TuhinMahmud181/ZLDD_Solar_Still_Modeling">full MATLAB model</a></p>
+    </div>
+    <div class="pills">
+      <span class="pill" id="pClock">07:00</span>
+      <span class="pill run" id="pState">Running</span>
+      <span class="pill" id="pSpeed">×600</span>
+      <span class="pill warn" id="pWarn" hidden></span>
+    </div>
+  </header>
+
+  <div class="top">
+    <section class="card scene" aria-label="Virtual test bench">
+      <svg id="scene" viewBox="0 0 1000 720" role="img" aria-label="Section of the prototype, looking east, with feed tank, brine jar, sensors and data logger"></svg>
+      <div id="tip"></div>
+      <div class="cap">
+        <span>Section looking east, to scale (north left). Hover an instrument for its live reading.</span>
+        <span class="key"><i style="background:#1679a8"></i>water film</span>
+        <span class="key"><i style="background:linear-gradient(90deg,#4a90c8,#e0773a)"></i>air path, coloured by temperature</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h2>Data logger · Arduino Mega, SD card</h2>
+        <div class="lcd" id="lcd" aria-live="off"></div>
+        <div class="btns">
+          <button class="primary" id="bPlay" type="button">Pause</button>
+          <button id="bReset" type="button">Restart day at 07:00</button>
+          <select id="sSpeed" aria-label="Simulation speed">
+            <option value="60">×60 (1 h in 1 min)</option>
+            <option value="600" selected>×600 (1 h in 6 s)</option>
+            <option value="1800">×1800 (1 h in 2 s)</option>
+            <option value="3600">×3600 (1 h in 1 s)</option>
+          </select>
+        </div>
+        <div class="btns">
+          <button id="bCopy" type="button">Copy logger CSV</button>
+          <button id="bCopyMan" type="button">Copy manual log sheet</button>
+        </div>
+        <div class="msg" id="msg"></div>
+        <textarea id="csvBox" readonly aria-label="CSV text"></textarea>
+      </div>
+
+      <div class="card">
+        <h2>Operator controls</h2>
+        <div class="ctl">
+          <label for="iFeed">Valve V-1, feed rate <output id="oFeed"></output>
+            <input type="range" id="iFeed" min="2" max="10" step="0.5" value="5">
+            <span class="sub">Design range 2–10 L per 10 h, nominal 5</span>
+          </label>
+          <label for="iPwm">Fan PWM (pin D9) <output id="oPwm"></output>
+            <input type="range" id="iPwm" min="20" max="100" step="5" value="65">
+            <span class="sub" id="oFlow"></span>
+          </label>
+          <label for="iSal">Feed salinity <output id="oSal"></output>
+            <input type="range" id="iSal" min="0" max="120" step="5" value="35">
+          </label>
+        </div>
+        <div class="btns">
+          <button id="bRefill" type="button">Refill feed tank to 10 L</button>
+          <button id="bEmpty" type="button">Empty brine jar</button>
+        </div>
+        <details>
+          <summary>Weather for the test day</summary>
+          <div class="ctl">
+            <label for="iG">Peak sunlight on the cover plane <output id="oG"></output>
+              <input type="range" id="iG" min="0" max="1000" step="25" value="850"></label>
+            <label for="iCl">Cloud cover <output id="oCl"></output>
+              <input type="range" id="iCl" min="0" max="80" step="5" value="15"></label>
+            <label for="iTmin">Coolest air, near dawn <output id="oTmin"></output>
+              <input type="range" id="iTmin" min="10" max="30" step="0.5" value="19"></label>
+            <label for="iTmax">Warmest air, mid-afternoon <output id="oTmax"></output>
+              <input type="range" id="iTmax" min="15" max="40" step="0.5" value="29"></label>
+            <label for="iRh">Humidity at dawn <output id="oRh"></output>
+              <input type="range" id="iRh" min="30" max="98" step="1" value="85"></label>
+            <label for="iWind">Wind speed <output id="oWind"></output>
+              <input type="range" id="iWind" min="0" max="6" step="0.5" value="1.5"></label>
+          </div>
+        </details>
+      </div>
+    </aside>
+  </div>
+
+  <section class="kpis" aria-label="Summary">
+    <div class="kpi"><div class="lab">Evaporated since 07:00 (scale balance)</div><div class="num" id="kEvap">0<small>g</small></div><div class="note" id="kEvapN">feed used − brine collected</div></div>
+    <div class="kpi"><div class="lab">Evaporation rate now</div><div class="num" id="kRate">0<small>g/h</small></div><div class="note" id="kRateN">model, all 6 stages</div></div>
+    <div class="kpi sun"><div class="lab">Sunlight, RE-01</div><div class="num" id="kG">0<small>W/m²</small></div><div class="note" id="kGN">cover plane, 24° south</div></div>
+    <div class="kpi"><div class="lab">Outlet air, TRH-02</div><div class="num" id="kOut">0<small>%RH</small></div><div class="note" id="kOutN"></div></div>
+    <div class="kpi hot"><div class="lab">Black floor film (model)</div><div class="num" id="kFloor">0<small>°C</small></div><div class="note" id="kFloorN"></div></div>
+    <div class="kpi"><div class="lab">Feed tank left</div><div class="num" id="kTank">0<small>L</small></div><div class="note" id="kTankN"></div></div>
+  </section>
+
+  <section class="charts">
+    <div class="card chart"><h3>Temperatures</h3><div class="legend" id="lg1"></div><canvas id="c1" aria-label="Temperature chart"></canvas></div>
+    <div class="card chart"><h3>Air humidity in and out</h3><div class="legend" id="lg2"></div><canvas id="c2" aria-label="Humidity chart"></canvas></div>
+    <div class="card chart"><h3>Water evaporated, cumulative</h3><div class="legend" id="lg3"></div><canvas id="c3" aria-label="Evaporation chart"></canvas></div>
+    <div class="card chart"><h3>Sunlight on the cover plane</h3><div class="legend" id="lg4"></div><canvas id="c4" aria-label="Irradiance chart"></canvas></div>
+  </section>
+
+  <div class="bottom">
+    <section class="card">
+      <h2>Inside the still, stage by stage (model)</h2>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Stage</th><th>Water in, g/h</th><th>Film °C</th><th>Air above, °C / %RH</th><th>Evaporation, g/h</th><th></th><th>Brine out, g/kg</th><th>Film</th></tr></thead>
+          <tbody id="stages"></tbody>
+        </table>
+      </div>
+      <h2 style="margin-top:16px">Manual log sheet · every 30 min</h2>
+      <div class="manual">
+        <table>
+          <thead><tr><th>Time</th><th>WT-01 g</th><th>WT-02 g</th><th>Evap g</th><th>FI-01 m/s</th><th>AI-01 g/kg</th></tr></thead>
+          <tbody id="manual"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="card notes">
+      <h2>What this simulation is</h2>
+      <ul>
+        <li>A simplified lumped model of the bench prototype, built from its design geometry: 300 × 300 × 2 mm plates at 46.5 mm pitch and 4° tilt, a 3 mm black floor, a 4 mm cover at 24°, and uninsulated 5 mm PMMA walls.</li>
+        <li>Air marches up through the six gaps (floor gap first) and exchanges heat and vapour with the film below and the plate above. Heat transfer coefficient h = 2.5 + 4.5·v W/m²K in the gaps. Mass transfer uses the Lewis analogy, and brine vapour pressure is lowered with salinity.</li>
+        <li>Sunlight: 90 % of it passes the cover. Each plate and film absorbs 6 % of what reaches it, and the black floor absorbs most of the rest. Radiation between neighbouring surfaces uses 5.5 W/m²K.</li>
+        <li>Water that condenses on the cover is assumed to run down the south wall onto P2.</li>
+        <li>Sensors carry their real resolution: DS18B20 in 0.0625 °C steps, SHT31 ±0.2 °C and ±2 %RH noise, and 1 g scales.</li>
+      </ul>
+      <p>Use it to choose fan and feed settings, to rehearse the test and its logging, and to know what readings to expect. It does not replace the MATLAB model, which remains the reference for validating against the measured data.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+/*MODEL_START*/
+// Simplified lumped model of the ZLDD acrylic bench prototype.
+// Stages: 0..4 = plates P1..P5 (top to bottom), 5 = black floor.
+// Air enters at the bottom of the north wall and leaves through the fan at the top (counter-flow to the water).
+const GEO = {
+  W: 0.302,                                  // inner width, m
+  plateW: 0.30,
+  wetL: [0.30, 0.25, 0.25, 0.25, 0.25, 0.30], // wetted film length per stage, m
+  plateA: 0.09,                              // plate area, m2
+  coverA: 0.138,                             // cover 416 x 332 mm
+  gapH: 0.0445,                              // clear gap between plates, m (46.5 pitch - 2 mm plate)
+  topH: 0.15,                                // mean height of the space under the cover, m
+  inletA: 0.007,                             // inlet opening 200 x 35 mm
+  Cplate: 390,                               // J/K, 2 mm PMMA plate + film
+  Cfloor: 680,                               // J/K, 3 mm black PMMA + film
+  Ccover: 970,                               // J/K, 4 mm PMMA cover
+  tankTare: 0.45, jarTare: 0.25,             // kg
+};
+const PROP = { cpa: 1006, cpw: 4180, hfg: 2.43e6, rhoA: 1.16, P: 101325 };
+
+function psat(T) { return 610.94 * Math.exp(17.625 * T / (T + 243.04)); }
+function wsat(T, a) { const p = (a === undefined ? 1 : a) * psat(T); return 0.622 * p / (PROP.P - p); }
+function rhFrom(w, T) { const pv = w * PROP.P / (0.622 + w); return Math.min(1, pv / psat(T)); }
+function wFrom(rh, T) { const p = rh * psat(T); return 0.622 * p / (PROP.P - p); }
+function waterActivity(S) { return Math.max(0.72, 1 - 0.00054 * S - 0.0000011 * S * S); } // S in g/kg
+
+function defaultParams() {
+  return { feedL10h: 5, pwm: 65, salinity: 35, Gpk: 850, cloud: 15, Tmin: 19, Tmax: 29, rhDawn: 85, wind: 1.5, startHour: 7 };
+}
+
+// Weather for a clear-to-partly-cloudy November day in Dhaka. t = seconds since midnight.
+function weather(p, t) {
+  const h = (t / 3600) % 24;
+  const tm = h < 6 ? h + 24 : h;
+  const f = tm <= 14.5 ? 0.5 - 0.5 * Math.cos(Math.PI * (tm - 6) / 8.5)
+                       : 0.5 + 0.5 * Math.cos(Math.PI * (tm - 14.5) / 15.5);
+  const Ta = p.Tmin + (p.Tmax - p.Tmin) * f;
+  const w = wFrom(p.rhDawn / 100, p.Tmin);       // absolute humidity held for the day
+  const RH = rhFrom(w, Ta);
+  const sr = 6.2, ss = 17.25;                       // sunrise / sunset, Dhaka, November
+  let G = 0;
+  if (h > sr && h < ss) G = p.Gpk * Math.pow(Math.sin(Math.PI * (h - sr) / (ss - sr)), 1.25);
+  const c = p.cloud / 100;
+  const n = 0.5 + 0.5 * (0.5 * Math.sin(t / 1310) + 0.3 * Math.sin(t / 577 + 1.3) + 0.2 * Math.sin(t / 233 + 2.1));
+  const cl = Math.max(0, Math.min(1, (n - 0.35) / 0.4));   // passing clouds
+  G *= (1 - 0.85 * c * cl - 0.15 * c);
+  return { Ta, RH, w, G: Math.max(0, G), wind: p.wind, cloud: c, sr, ss };
+}
+
+function initState(p) {
+  const t = p.startHour * 3600;
+  const wx = weather(p, t);
+  return {
+    t, t0: t, Tf: Array(6).fill(wx.Ta), Tc: wx.Ta, Ttank: wx.Ta, Tjar: wx.Ta,
+    Mtank: 7.5, Mjar: 0.30, Sjar: p.salinity, S: Array(6).fill(p.salinity),
+    cumFeed: 0, cumBrine: 0, cumEvap: 0, cumCond: 0,
+    mIn: Array(6).fill(p.feedL10h / 36000), E: Array(6).fill(0), out: null,
+  };
+}
+
+function step(s, p, dt) {
+  const wx = weather(p, s.t);
+  const Tamb = wx.Ta;
+  const mFeed = s.Mtank > 0.25 ? p.feedL10h / 36000 : 0;        // kg/s (1 L ~ 1 kg)
+  const Q = 0.012 * p.pwm / 100, ma = PROP.rhoA * Q;            // fan flow
+  const vg = Q / (GEO.W * GEO.gapH), vt = Q / (GEO.W * GEO.topH);
+  const hg = 2.5 + 4.5 * vg, ht = 2.5 + 4.0 * vt, hr = 5.5;      // W/m2K
+
+  // sunlight: through the cover, part absorbed by each film/plate, most by the black floor
+  const I0 = wx.G * GEO.coverA * 0.9 * 0.85;
+  const solar = Array(6).fill(0);
+  let I = I0;
+  for (let i = 0; i < 5; i++) { solar[i] = 0.06 * I; I *= 0.88; }
+  solar[5] = 0.93 * I;
+  const solarCover = 0.06 * wx.G * GEO.coverA;
+
+  // air march, bottom gap first
+  let Tin = Tamb, win = wx.w;
+  const Qloss = Array(6).fill(0), E = Array(6).fill(0);
+  const gapT = [], gapRH = [];
+  let Qcov = 0, cond = 0;
+  for (let g = 0; g < 6; g++) {
+    const b = 5 - g;                 // film below this gap
+    const a = g < 5 ? 4 - g : -1;    // plate underside above (-1 = cover)
+    const Ab = GEO.plateW * GEO.wetL[b];
+    const h = g < 5 ? hg : ht;
+    const Tb = s.Tf[b], Tu = a >= 0 ? s.Tf[a] : s.Tc;
+    const Aa = a >= 0 ? GEO.plateA : GEO.coverA;
+    const UAw = g < 5 ? 0.19 : 0.9;  // uninsulated 5 mm PMMA walls
+    const Gb = h * Ab, Ga = h * Aa, Gs = Gb + Ga + UAw;
+    const Tref = (Gb * Tb + Ga * Tu + UAw * Tamb) / Gs;
+    const NTU = Gs / (ma * PROP.cpa), eN = Math.exp(-NTU);
+    const Tout = Tref + (Tin - Tref) * eN;
+    const Tm = Tref + (Tin - Tref) * (1 - eN) / NTU;
+    Qloss[b] += Gb * (Tb - Tm);
+    const qa = Ga * (Tu - Tm);
+    if (a >= 0) Qloss[a] += qa; else Qcov += qa;
+    const qr = hr * GEO.plateA * (Tb - Tu);
+    Qloss[b] += qr; if (a >= 0) Qloss[a] -= qr; else Qcov -= qr;
+    let wout = win;
+    if (s.mIn[b] > 1e-7) {
+      const ws = wsat(Tb, waterActivity(s.S[b]));
+      wout = ws + (win - ws) * Math.exp(-(h / PROP.cpa) * Ab / ma);
+      let e = ma * (wout - win);
+      const cap = 0.95 * s.mIn[b];
+      if (e > cap) { e = cap; wout = win + e / ma; }
+      E[b] = e;
+    }
+    if (a < 0) {                       // condensation on the cover underside
+      const wsc = wsat(s.Tc);
+      if (wout > wsc) {
+        const w2 = wsc + (wout - wsc) * Math.exp(-(h / PROP.cpa) * GEO.coverA / ma);
+        cond = ma * (wout - w2); wout = w2;
+      }
+    }
+    gapT.push(Tout); gapRH.push(rhFrom(wout, Tout));
+    Tin = Tout; win = wout;
+  }
+
+  // water, top plate first
+  const mIn = Array(6).fill(0);
+  let mw = mFeed, Tw = s.Ttank, Sw = p.salinity;
+  for (let i = 0; i < 6; i++) {
+    if (i === 1 && cond > 0) {         // cover condensate runs down the south wall onto P2
+      Tw = (mw * Tw + cond * s.Tc) / (mw + cond);
+      Sw = mw > 0 ? Sw * mw / (mw + cond) : 0;
+      mw += cond;
+    }
+    mIn[i] = mw;
+    const e = Math.min(E[i], 0.95 * mw); E[i] = e;
+    const mo = mw - e;
+    const C = i < 5 ? GEO.Cplate : GEO.Cfloor;
+    let dQ = mw * PROP.cpw * (Tw - s.Tf[i]) + solar[i] - Qloss[i] - e * PROP.hfg;
+    if (i === 5) dQ -= 0.26 * (s.Tf[i] - Tamb);   // floor -> bottom panel -> bench
+    s.Tf[i] += dt * dQ / C;
+    if (mo > 1e-9) s.S[i] = Sw * mw / mo;
+    Sw = s.S[i]; Tw = s.Tf[i]; mw = mo;
+  }
+  const mBrine = mw;
+
+  s.Mtank -= mFeed * dt; s.cumFeed += mFeed * dt;
+  if (mBrine > 0) {
+    const Mn = s.Mjar + mBrine * dt;
+    s.Tjar = (s.Mjar * s.Tjar + mBrine * dt * Tw) / Mn;
+    s.Sjar = (s.Mjar * s.Sjar + mBrine * dt * Sw) / Mn;
+    s.Mjar = Mn;
+  }
+  s.Tjar += dt * 0.5 * (Tamb - s.Tjar) / (s.Mjar * PROP.cpw);
+  s.cumBrine += mBrine * dt;
+  s.Ttank += dt * (Tamb - s.Ttank) / (4 * 3600);    // tank in shade
+
+  const hout = 5.7 + 3.8 * wx.wind, Tsky = Tamb - 10 * (1 - 0.7 * wx.cloud);
+  const dQc = solarCover - Qcov + cond * PROP.hfg - GEO.coverA * (hout * (s.Tc - Tamb) + 5.0 * (s.Tc - Tsky));
+  s.Tc += dt * dQc / GEO.Ccover;
+
+  const Esum = E.reduce((x, y) => x + y, 0);
+  s.cumEvap += Esum * dt; s.cumCond += cond * dt;
+  const ToutFan = Tin + 1.5 / (ma * PROP.cpa);      // fan motor heat
+  s.mIn = mIn; s.E = E;
+  s.out = {
+    wx, Q, ma, vin: Q / GEO.inletA, rpm: 300 + 1700 * p.pwm / 100, gapT, gapRH,
+    Tout: ToutFan, RHout: rhFrom(win, ToutFan), E, Esum, cond, mFeed, mBrine, solar, mIn,
+  };
+  s.t += dt;
+}
+
+</script>
+<script>
+(() => {
+"use strict";
+const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (id) => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const p = defaultParams();
+let s, logs, manual, running = !reduced, speed = 600, lastLogMin, lastManMin, tankAdded, jarRemoved, wt01_0, wt02_0, warn = "";
+
+/* ---------- sensors ---------- */
+const gauss = () => { let u = 0, v = 0; while (u === 0) u = Math.random(); while (v === 0) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+const ds18 = (T) => Math.round((T + 0.03 * gauss()) / 0.0625) * 0.0625;
+function read() {
+  const o = s.out, wx = o.wx;
+  return {
+    TT01: ds18(s.Ttank), TT02: ds18(s.Tjar), TT03: ds18(s.Tc),
+    TRH01T: wx.Ta + 0.08 * gauss(), TRH01RH: Math.min(100, 100 * wx.RH + 0.6 * gauss()),
+    TRH02T: o.Tout + 0.08 * gauss(), TRH02RH: Math.min(100, 100 * o.RHout + 0.6 * gauss()),
+    RE01: Math.max(0, wx.G * (1 + 0.01 * gauss())), ST01: Math.round(o.rpm + 8 * gauss()),
+    WT01: Math.round((GEO.tankTare + s.Mtank) * 1000), WT02: Math.round((GEO.jarTare + s.Mjar) * 1000),
+    FI01: o.vin * (1 + 0.03 * gauss()), AI01: s.Sjar * (1 + 0.01 * gauss()),
+  };
+}
+function evapMeasured(r) {
+  const fed = wt01_0 + tankAdded - r.WT01;
+  const got = r.WT02 + jarRemoved - wt02_0;
+  return fed - got;
+}
+const hhmm = (t) => { const m = Math.floor(t / 60) % 1440; return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); };
+
+/* ---------- simulation control ---------- */
+function reset() {
+  s = initState(p); s.Mtank = 7.5;
+  logs = []; manual = []; tankAdded = 0; jarRemoved = 0;
+  step(s, p, 1); s.t -= 1;
+  const r = read(); wt01_0 = r.WT01; wt02_0 = r.WT02;
+  lastLogMin = -1; lastManMin = -1;
+  record();
+}
+function record() {
+  const min = Math.floor(s.t / 60);
+  if (min === lastLogMin) return;
+  lastLogMin = min;
+  const r = read();
+  logs.push({ t: s.t, h: s.t / 3600, r, Tf: s.Tf.slice(), evapModel: s.cumEvap * 1000, evapMeas: evapMeasured(r) });
+  if (min % 30 === 0 && min !== lastManMin) {
+    lastManMin = min;
+    manual.push({ t: s.t, WT01: r.WT01, WT02: r.WT02, evap: evapMeasured(r), FI01: r.FI01, AI01: min % 120 === 0 ? r.AI01 : null });
+    renderManual();
+  }
+}
+function advance(simSeconds) {
+  const dt = 5;
+  let n = Math.max(1, Math.round(simSeconds / dt));
+  while (n-- > 0) {
+    step(s, p, dt);
+    if (Math.floor(s.t / 60) !== lastLogMin) record();
+    if (s.t >= 24 * 3600 - 60) { running = false; break; }
+  }
+}
+
+/* ---------- SVG scene ---------- */
+const svg = $("scene");
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  (parent || svg).appendChild(e);
+  return e;
+}
+const SC = 0.82, OX = 400, OY = 556;
+const X = (x) => OX + SC * x, Y = (z) => OY - SC * z;
+const plates = [
+  { x0: 0, x1: 300, z0: 257, z1: 236 },        // P1, high at north
+  { x0: 50, x1: 350, z0: 189.5, z1: 210.5 },   // P2, high at south
+  { x0: 0, x1: 300, z0: 164, z1: 143 },
+  { x0: 50, x1: 350, z0: 96.5, z1: 117.5 },
+  { x0: 0, x1: 300, z0: 71, z1: 50 },
+];
+const zP = (i, x) => { const q = plates[i]; return q.z0 + (q.z1 - q.z0) * (x - q.x0) / (q.x1 - q.x0); };
+const zFloor = (x) => 24.5 * x / 350;
+const zCover = (x) => 491.8 - Math.tan(24 * Math.PI / 180) * x;
+
+const defs = el("defs", {});
+defs.innerHTML = `
+  <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop id="sky0" offset="0" stop-color="#7fb6dd"/><stop id="sky1" offset="1" stop-color="#dcecf4"/></linearGradient>
+  <radialGradient id="gSun"><stop offset="0" stop-color="#fff7d6"/><stop offset=".45" stop-color="#ffd45e"/><stop offset="1" stop-color="#ffb02e" stop-opacity="0"/></radialGradient>
+  <linearGradient id="gWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c79c6a"/><stop offset="1" stop-color="#9c7448"/></linearGradient>
+  <linearGradient id="gAcr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8f6fb" stop-opacity=".9"/><stop offset="1" stop-color="#bfe0ec" stop-opacity=".75"/></linearGradient>
+  <linearGradient id="gAlu" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b9c1c5"/><stop offset=".5" stop-color="#e3e8ea"/><stop offset="1" stop-color="#a7b0b5"/></linearGradient>
+  <linearGradient id="gSteel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d969b"/><stop offset=".5" stop-color="#e2e6e8"/><stop offset="1" stop-color="#7e878c"/></linearGradient>
+  <linearGradient id="gWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fb7e0" stop-opacity=".85"/><stop offset="1" stop-color="#2d7fb0" stop-opacity=".9"/></linearGradient>
+  <linearGradient id="gBrine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9c891" stop-opacity=".9"/><stop offset="1" stop-color="#c9964d" stop-opacity=".95"/></linearGradient>
+  <linearGradient id="gPcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f7a86"/><stop offset="1" stop-color="#145a63"/></linearGradient>`;
+
+// sky, sun, roof
+el("rect", { x: 0, y: 0, width: 1000, height: 720, fill: "url(#gSky)" });
+const sunG = el("g", {});
+el("circle", { r: 46, fill: "url(#gSun)" }, sunG);
+el("circle", { r: 15, fill: "#fff3b8" }, sunG);
+const rays = el("g", { stroke: "#f5b43c", "stroke-width": 2, "stroke-linecap": "round", opacity: 0 });
+const rayLines = [0, 1, 2, 3].map(() => el("line", { "stroke-dasharray": "2 9" }, rays));
+el("rect", { x: 0, y: 640, width: 1000, height: 80, fill: "#a9aea8" });
+el("rect", { x: 0, y: 640, width: 1000, height: 4, fill: "#8f958f" });
+el("text", { x: 14, y: 708, "font-size": 11, fill: "#5d635e", "font-family": "IBM Plex Sans" }).textContent = "Roof test area, BUET";
+
+// bench
+const bench = el("g", {});
+el("rect", { x: 112, y: 560, width: 876, height: 13, rx: 2, fill: "url(#gWood)" }, bench);
+for (const lx of [126, 960]) el("rect", { x: lx, y: 573, width: 12, height: 108, fill: "#8a6640" }, bench);
+el("rect", { x: 126, y: 650, width: 846, height: 7, fill: "#8a6640", opacity: .85 }, bench);
+el("rect", { x: 396, y: 560, width: 18, height: 13, fill: "#6f5133" }, bench); // drain hole through the bench
+
+// still: back side wall (faint), bottom panel, walls, frame
+const still = el("g", {});
+el("polygon", { points: [[0, 0], [0, 497.1], [350, 336.8], [350, 0]].map(([x, z]) => X(x) + "," + Y(z)).join(" "), fill: "#d7eef6", opacity: .45, stroke: "#9fc6d6", "stroke-width": .8 }, still);
+el("rect", { x: X(-6), y: Y(0), width: 362 * SC, height: 5 * SC, fill: "url(#gAcr)", stroke: "#7fb0c4", "stroke-width": .8 }, still);
+for (const [z0, z1] of [[0, 28], [63, 360], [470, 494.8]]) el("rect", { x: X(-5), y: Y(z1), width: 5 * SC, height: (z1 - z0) * SC, fill: "url(#gAcr)", stroke: "#7fb0c4", "stroke-width": .8 }, still);
+el("rect", { x: X(350), y: Y(339), width: 5 * SC, height: 339 * SC, fill: "url(#gAcr)", stroke: "#7fb0c4", "stroke-width": .8 }, still);
+// aluminium angle frame
+el("rect", { x: X(-5) - 5, y: Y(497), width: 5, height: 497 * SC + 4, fill: "url(#gAlu)" }, still);
+el("rect", { x: X(355), y: Y(340), width: 5, height: 340 * SC + 4, fill: "url(#gAlu)" }, still);
+el("rect", { x: X(-5) - 5, y: Y(0) + 2, width: 366 * SC + 10, height: 4, fill: "url(#gAlu)" }, still);
+el("rect", { x: X(-5) - 7, y: Y(352), width: 7, height: 6, fill: "#9aa3a8" }, still); // F7 fan bar
+
+// floor, spacers, plates, rods
+el("rect", { x: X(175) - 2, y: Y(12.2), width: 4, height: 12.2 * SC, fill: "#cfe7f0", stroke: "#7fb0c4", "stroke-width": .5 }, still);
+el("rect", { x: X(340) - 2, y: Y(23.8), width: 4, height: 23.8 * SC, fill: "#cfe7f0", stroke: "#7fb0c4", "stroke-width": .5 }, still);
+el("polygon", { points: `${X(0)},${Y(0)} ${X(350)},${Y(24.5)} ${X(350)},${Y(21.5)} ${X(0)},${Y(-3)}`, fill: "#1d2326" }, still);
+for (let i = 0; i < 5; i++) {
+  const q = plates[i];
+  el("polygon", { points: `${X(q.x0)},${Y(q.z0)} ${X(q.x1)},${Y(q.z1)} ${X(q.x1)},${Y(q.z1 - 2)} ${X(q.x0)},${Y(q.z0 - 2)}`, fill: "#cde9f3", stroke: "#6ea9c0", "stroke-width": .7 }, still);
+}
+for (const [x, z] of [[30, 253.2], [280, 235.8], [330, 206.7], [80, 189.3], [30, 160.2], [280, 142.8], [330, 113.7], [80, 96.3], [30, 67.2], [280, 49.7]])
+  el("circle", { cx: X(x), cy: Y(z - 5), r: 2.6, fill: "url(#gSteel)", stroke: "#6c7579", "stroke-width": .5 }, still);
+
+// air path (one segment per gap)
+const airG = el("g", { fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });
+const mid = (g, x) => {
+  if (g === 0) return (zFloor(x) + zP(4, Math.min(x, 300)) - 2) / 2;
+  if (g === 5) return (zP(0, Math.min(x, 300)) + zCover(x)) / 2 - 20;
+  const lo = 5 - g, hi = 4 - g;
+  return (zP(lo, Math.min(Math.max(x, plates[lo].x0), plates[lo].x1)) + zP(hi, Math.min(Math.max(x, plates[hi].x0), plates[hi].x1)) - 2) / 2;
+};
+const airPts = [];
+airPts.push([[-70, 45], [0, 45], [12, mid(0, 12)], [290, mid(0, 290)], [325, mid(0, 300)], [325, mid(1, 300)]]);
+airPts.push([[300, mid(1, 300)], [60, mid(1, 60)], [25, mid(1, 50)], [25, mid(2, 50)]]);
+airPts.push([[50, mid(2, 50)], [290, mid(2, 290)], [325, mid(2, 300)], [325, mid(3, 300)]]);
+airPts.push([[300, mid(3, 300)], [60, mid(3, 60)], [25, mid(3, 50)], [25, mid(4, 50)]]);
+airPts.push([[50, mid(4, 50)], [290, mid(4, 290)], [325, mid(4, 300)], [325, 300]]);
+airPts.push([[325, 300], [250, 345], [120, 395], [10, 415], [-35, 415], [-110, 415]]);
+const airSeg = airPts.map((pts) => el("path", { d: "M" + pts.map(([x, z]) => X(x) + " " + Y(z)).join(" L"), "stroke-width": 3, "stroke-dasharray": "7 9", opacity: .85 }, airG));
+const arrowIn = el("path", { d: `M${X(-70) + 6} ${Y(45) - 6} L${X(-70)} ${Y(45)} L${X(-70) + 6} ${Y(45) + 6}`, transform: `rotate(180 ${X(-70)} ${Y(45)})`, fill: "none", "stroke-width": 2.5 }, airG);
+const arrowOut = el("path", { d: `M${X(-110) + 7} ${Y(415) - 6} L${X(-110)} ${Y(415)} L${X(-110) + 7} ${Y(415) + 6}`, fill: "none", "stroke-width": 2.5 }, airG);
+
+// water films and drips
+const filmG = el("g", { fill: "none", "stroke-linecap": "round" });
+const films = [];
+const filmPath = [
+  [[3, zP(0, 3)], [300, zP(0, 300)]],
+  [[300, zP(1, 300)], [50, zP(1, 50)]],
+  [[50, zP(2, 50)], [300, zP(2, 300)]],
+  [[300, zP(3, 300)], [50, zP(3, 50)]],
+  [[50, zP(4, 50)], [300, zP(4, 300)]],
+  [[300, zFloor(300)], [4, zFloor(4)]],
+];
+filmPath.forEach((pp) => {
+  const d = `M${X(pp[0][0])} ${Y(pp[0][1]) - 1.3} L${X(pp[1][0])} ${Y(pp[1][1]) - 1.3}`;
+  const base = el("path", { d, stroke: "#1679a8", "stroke-width": 2.6, opacity: .9 }, filmG);
+  const flow = el("path", { d, stroke: "#bfe6fb", "stroke-width": 1.2, "stroke-dasharray": "5 11" }, filmG);
+  films.push({ base, flow });
+});
+const drips = [[300, zP(0, 300) - 2, zP(1, 300)], [50, zP(1, 50) - 2, zP(2, 50)], [300, zP(2, 300) - 2, zP(3, 300)], [50, zP(3, 50) - 2, zP(4, 50)], [300, zP(4, 300) - 2, zFloor(300)]];
+const dripEls = drips.map(([x, za, zb]) => ({ x, za, zb, dots: [0, 1, 2].map(() => el("ellipse", { cx: X(x) + 1, rx: 1.8, ry: 2.6, fill: "#2a8fc4" }, filmG)) }));
+const condG = el("g", { opacity: 0 });
+for (let i = 0; i < 26; i++) { const x = 20 + i * 13 + (i % 3) * 3; el("circle", { cx: X(x), cy: Y(zCover(x)) + 2.4 + (i % 2), r: 1.3 + (i % 3) * 0.4, fill: "#ffffff", stroke: "#7fb6cf", "stroke-width": .5 }, condG); }
+const saltG = el("g", { opacity: 0 });
+for (let i = 0; i < 18; i++) { const x = 8 + i * 9; el("rect", { x: X(x), y: Y(zFloor(x)) - 4, width: 3, height: 3, fill: "#fbfbf7", stroke: "#c8c8c0", "stroke-width": .4, transform: `rotate(${i * 23} ${X(x) + 1.5} ${Y(zFloor(x)) - 2.5})` }, saltG); }
+
+// cover (drawn over the inside)
+const cx0 = -12, cx1 = 368;
+el("polygon", { points: `${X(cx0)},${Y(zCover(cx0) + 4)} ${X(cx1)},${Y(zCover(cx1) + 4)} ${X(cx1)},${Y(zCover(cx1))} ${X(cx0)},${Y(zCover(cx0))}`, fill: "#d6eef7", opacity: .9, stroke: "#6ea9c0", "stroke-width": .8 }, still);
+el("line", { x1: X(cx0) + 4, y1: Y(zCover(cx0) + 3.2), x2: X(cx1) - 4, y2: Y(zCover(cx1) + 3.2), stroke: "#ffffff", "stroke-width": 1, opacity: .8 }, still);
+el("rect", { x: X(176) - 8, y: Y(zCover(176) + 5.5), width: 16, height: 2.4, fill: "#c8cdd0", transform: `rotate(24 ${X(176)} ${Y(zCover(176) + 4.5)})` }, still); // sun shield over TT-03
+
+// fan on the north wall (seen edge-on, blades in perspective)
+const fanG = el("g", { "data-tip": "ST01" });
+const fy = Y(415);
+el("rect", { x: X(-5) - 22, y: fy - 49, width: 22, height: 98, rx: 3, fill: "#2b3236" }, fanG);
+el("rect", { x: X(-5) - 24, y: fy - 49, width: 3, height: 98, fill: "#151a1c" }, fanG);
+const blades = el("g", { transform: `translate(${X(-5) - 11} ${fy}) scale(0.22 1)` }, fanG);
+const bladeRot = el("g", {}, blades);
+for (let i = 0; i < 7; i++) el("path", { d: "M0 0 C 14 -10, 36 -18, 42 -6 C 30 -2, 14 2, 0 0Z", fill: "#59646a", transform: `rotate(${i * 360 / 7})` }, bladeRot);
+el("circle", { r: 11, fill: "#1f2629" }, bladeRot);
+
+// feed tank on scale, shelf and valve
+const shelf = el("g", {});
+el("rect", { x: 130, y: 300, width: 175, height: 8, fill: "url(#gAlu)" }, shelf);
+for (const lx of [140, 288]) el("rect", { x: lx, y: 308, width: 6, height: 252, fill: "url(#gAlu)" }, shelf);
+const tankG = el("g", { "data-tip": "WT01" });
+el("rect", { x: 160, y: 286, width: 118, height: 14, rx: 3, fill: "#d9dde0", stroke: "#8b9397" }, tankG);
+el("rect", { x: 190, y: 289, width: 56, height: 9, rx: 1.5, fill: "#1b2a22" }, tankG);
+const wt01Txt = el("text", { x: 243, y: 296.5, "text-anchor": "end", "font-size": 8, fill: "#b8f07a", class: "mono" }, tankG);
+const tank = { x: 172, y: 158, w: 94, h: 126 };
+el("rect", { x: tank.x, y: tank.y, width: tank.w, height: tank.h, rx: 8, fill: "#eef8fc", stroke: "#8fb4c4", "stroke-width": 1.4 }, tankG);
+const tankWater = el("rect", { x: tank.x + 2, width: tank.w - 4, rx: 6, fill: "url(#gWater)" }, tankG);
+el("rect", { x: 205, y: 150, width: 28, height: 9, rx: 2, fill: "#3d6f8a" }, tankG);
+for (let k = 1; k <= 4; k++) el("line", { x1: tank.x + tank.w - 12, x2: tank.x + tank.w - 4, y1: tank.y + tank.h - k * tank.h / 5, y2: tank.y + tank.h - k * tank.h / 5, stroke: "#6b8a98", "stroke-width": .8 }, tankG);
+el("text", { x: tank.x + 36, y: tank.y + 16, "font-size": 9, fill: "#3d5866", "font-family": "IBM Plex Sans" }, tankG).textContent = "10 L feed";
+// feed tube to Ø12 hole in north wall, onto P1
+const tubeD = `M${tank.x + tank.w} ${tank.y + tank.h - 8} L330 ${tank.y + tank.h - 8} L330 ${Y(272)} L${X(4)} ${Y(272)} L${X(6)} ${Y(262)}`;
+el("path", { d: tubeD, fill: "none", stroke: "#6c9fb5", "stroke-width": 5, "stroke-linejoin": "round" });
+el("path", { d: tubeD, fill: "none", stroke: "#d8f0fa", "stroke-width": 2.6, "stroke-linejoin": "round" });
+const feedFlow = el("path", { d: tubeD, fill: "none", stroke: "#2a8fc4", "stroke-width": 1.4, "stroke-dasharray": "3 8", "stroke-linejoin": "round" });
+const valveG = el("g", { "data-tip": "V1" });
+const vy = 312;
+el("path", { d: `M322 ${vy - 9} L338 ${vy + 9} L338 ${vy - 9} L322 ${vy + 9} Z`, fill: "#c9372c", stroke: "#7d1f18", "stroke-width": 1 }, valveG);
+const valveHandle = el("line", { x1: 330, y1: vy, x2: 330, y2: vy - 16, stroke: "#20272a", "stroke-width": 3, "stroke-linecap": "round" }, valveG);
+el("circle", { cx: 330, cy: vy, r: 3, fill: "#20272a" }, valveG);
+
+// brine jar on floor scale
+const jarG = el("g", { "data-tip": "WT02" });
+const drainD = `M${X(3)} ${Y(-3)} L${X(3)} 590 Q${X(3)} 606 418 610`;
+el("path", { d: drainD, fill: "none", stroke: "#a77b3f", "stroke-width": 4.5 }, jarG);
+el("path", { d: drainD, fill: "none", stroke: "#f2dfbf", "stroke-width": 2.2 }, jarG);
+const brineFlow = el("path", { d: drainD, fill: "none", stroke: "#b07a35", "stroke-width": 1.2, "stroke-dasharray": "3 8" }, jarG);
+el("rect", { x: 368, y: 690, width: 104, height: 14, rx: 3, fill: "#d9dde0", stroke: "#8b9397" }, jarG);
+el("rect", { x: 392, y: 693, width: 56, height: 9, rx: 1.5, fill: "#1b2a22" }, jarG);
+const wt02Txt = el("text", { x: 445, y: 700.5, "text-anchor": "end", "font-size": 8, fill: "#b8f07a", class: "mono" }, jarG);
+const jar = { x: 380, y: 612, w: 80, h: 77 };
+el("rect", { x: jar.x, y: jar.y, width: jar.w, height: jar.h, rx: 6, fill: "#fbf6ec", stroke: "#b49a76", "stroke-width": 1.3 }, jarG);
+const jarWater = el("rect", { x: jar.x + 2, width: jar.w - 4, rx: 5, fill: "url(#gBrine)" }, jarG);
+el("text", { x: jar.x + jar.w + 6, y: jar.y + 74, "font-size": 8.5, fill: "#7a5a2c" }, jarG).textContent = "8 L brine jar";
+
+// DS18B20 probes: tank, jar
+function probe(x1, y1, x2, y2, tag) {
+  const g = el("g", { "data-tip": tag });
+  el("path", { d: `M${x1} ${y1} L${x2} ${y2 - 14}`, stroke: "#1e1f20", "stroke-width": 2.2, fill: "none" }, g);
+  el("rect", { x: x2 - 2.5, y: y2 - 15, width: 5, height: 16, rx: 2.4, fill: "url(#gSteel)", stroke: "#5f686c", "stroke-width": .5 }, g);
+  return g;
+}
+probe(200, 140, 200, 275, "TT01");
+probe(398, 596, 400, 682, "TT02");
+// TT-03 on the cover underside
+const tt03G = el("g", { "data-tip": "TT03" });
+el("rect", { x: X(176) - 9, y: Y(zCover(176)) + .5, width: 18, height: 4.4, rx: 2, fill: "url(#gSteel)", stroke: "#5f686c", "stroke-width": .5, transform: `rotate(24 ${X(176)} ${Y(zCover(176)) + 2.5})` }, tt03G);
+el("path", { d: `M${X(168)} ${Y(zCover(168)) + 4} L${X(40)} ${Y(zCover(40)) + 5}`, stroke: "#1e1f20", "stroke-width": 1.4, fill: "none" }, tt03G);
+
+// SHT31 in radiation shields
+function shield(cx, cy, tag, pole) {
+  const g = el("g", { "data-tip": tag });
+  if (pole) el("rect", { x: cx - 2, y: cy + 16, width: 4, height: pole, fill: "url(#gAlu)" }, g);
+  for (let k = 0; k < 5; k++) el("ellipse", { cx, cy: cy - 14 + k * 7, rx: 17 - k * .4, ry: 3.2, fill: "#f6f6f2", stroke: "#a6aaa6", "stroke-width": .8 }, g);
+  el("rect", { x: cx - 5, y: cy - 2, width: 10, height: 6, fill: "#2d5c9e" }, g);
+  return g;
+}
+shield(64, 486, "TRH01", 154);
+const trh2 = shield(342, fy - 30, "TRH02", 0);
+// pyranometer on the frame at the south end
+const reG = el("g", { "data-tip": "RE01", transform: `rotate(24 ${X(372)} ${Y(345)})` });
+el("rect", { x: X(372) - 16, y: Y(345), width: 32, height: 5, fill: "url(#gAlu)" }, reG);
+el("rect", { x: X(372) - 9, y: Y(345) - 6, width: 18, height: 6, rx: 1.5, fill: "#e9ecee", stroke: "#8b9397" }, reG);
+el("path", { d: `M${X(372) - 7} ${Y(345) - 6} A7 7 0 0 1 ${X(372) + 7} ${Y(345) - 6}`, fill: "#f4fbff", stroke: "#94a7b2" }, reG);
+el("rect", { x: X(357) + 4, y: Y(345) + 2, width: 4, height: Y(0) - Y(345), fill: "url(#gAlu)" });
+
+// handheld hot-wire anemometer at the inlet
+const fiG = el("g", { "data-tip": "FI01" });
+el("rect", { x: 300, y: 515, width: 40, height: 44, rx: 5, fill: "#f0b321", stroke: "#8f6a10" }, fiG);
+el("rect", { x: 305, y: 520, width: 30, height: 14, rx: 2, fill: "#1b2a22" }, fiG);
+const fiTxt = el("text", { x: 332, y: 530.5, "text-anchor": "end", "font-size": 8, fill: "#b8f07a", class: "mono" }, fiG);
+el("path", { d: `M340 540 L${X(-5) - 14} ${Y(45) + 3}`, stroke: "#2b2b2b", "stroke-width": 2.2 }, fiG);
+
+// logger + laptop
+const logG = el("g", { "data-tip": "LOG" });
+el("rect", { x: 738, y: 488, width: 128, height: 72, rx: 6, fill: "#e9eef0", stroke: "#8b9397" }, logG);
+el("rect", { x: 744, y: 528, width: 116, height: 28, rx: 2, fill: "url(#gPcb)" }, logG);
+for (let k = 0; k < 18; k++) el("rect", { x: 748 + k * 6, y: 530, width: 3.4, height: 4, fill: "#111" }, logG);
+el("rect", { x: 830, y: 541, width: 22, height: 12, rx: 1, fill: "#c5ccd0" }, logG);
+el("rect", { x: 744, y: 493, width: 116, height: 32, rx: 2, fill: "#2b5b2e" }, logG);
+const lcdLines = [0, 1, 2, 3].map((k) => el("text", { x: 748, y: 500.5 + k * 7.4, "font-size": 6.4, fill: "#d6ff9e", class: "mono" }, logG));
+const lapG = el("g", { "data-tip": "LAP" });
+el("path", { d: "M880 552 L986 552 L994 560 L872 560 Z", fill: "#9aa3a8" }, lapG);
+el("rect", { x: 886, y: 476, width: 94, height: 74, rx: 4, fill: "#2b3236" }, lapG);
+el("rect", { x: 891, y: 481, width: 84, height: 64, fill: "#f7fafb" }, lapG);
+const lapLine = el("polyline", { fill: "none", stroke: "#0d6f8f", "stroke-width": 1.4 }, lapG);
+const lapTxt = el("text", { x: 895, y: 490, "font-size": 6.5, fill: "#18262c", class: "mono" }, lapG);
+
+// signal cables to the logger
+const cab = el("g", { fill: "none", stroke: "#3a4348", "stroke-width": 1, opacity: .22, "stroke-dasharray": "4 4" });
+for (const d of [
+  `M200 140 C 200 110, 700 110, 760 488`,
+  `M400 596 C 520 600, 700 600, 770 560`,
+  `M${X(40)} ${Y(zCover(40)) + 5} C 300 120, 690 200, 780 488`,
+  `M64 470 C 64 430, 520 470, 745 520`,
+  `M342 ${fy - 44} C 360 120, 700 140, 790 488`,
+  `M${X(372)} ${Y(345)} C 720 380, 760 430, 800 488`,
+  `M${X(-5) - 20} ${fy + 49} C 360 420, 600 470, 750 540`,
+]) el("path", { d }, cab);
+el("line", { x1: 866, y1: 530, x2: 886, y2: 530, stroke: "#3a4348", "stroke-width": 2 });
+
+// ISA tag bubbles
+function bubble(cx, cy, tag, num, manual, lx, ly) {
+  const g = el("g", {});
+  if (lx !== undefined) el("line", { x1: cx, y1: cy, x2: lx, y2: ly, stroke: "#1f3b57", "stroke-width": .8 }, g);
+  el("circle", { cx, cy, r: 14, fill: "#fff", stroke: manual ? "#e08a2c" : "#1f3b57", "stroke-width": 1.6, "stroke-dasharray": manual ? "4 3" : "none" }, g);
+  el("line", { x1: cx - 14, x2: cx + 14, y1: cy, y2: cy, stroke: manual ? "#e08a2c" : "#1f3b57", "stroke-width": .8 }, g);
+  el("text", { x: cx, y: cy - 3, "text-anchor": "middle", "font-size": 8.5, "font-weight": 700, fill: "#18262c", "font-family": "IBM Plex Sans" }, g).textContent = tag;
+  el("text", { x: cx, y: cy + 10, "text-anchor": "middle", "font-size": 8, fill: "#18262c", "font-family": "IBM Plex Sans" }, g).textContent = num;
+}
+bubble(140, 130, "TT", "01", false, 198, 150);
+bubble(110, 270, "WT", "01", true, 160, 292);
+bubble(355, 290, "V", "1", true, 335, 306);
+bubble(500, 640, "TT", "02", false, 404, 650);
+bubble(510, 690, "WT", "02", true, 472, 697);
+bubble(X(230), Y(zCover(230)) - 52, "TT", "03", false, X(178), Y(zCover(178)) + 2);
+bubble(28, 430, "TRH", "01", false, 52, 470);
+bubble(300, 160, "TRH", "02", false, 330, fy - 38);
+bubble(372, 128, "ST", "01", false, X(-5) - 14, fy - 49);
+bubble(X(372) + 46, Y(345) - 34, "RE", "01", false, X(372) + 6, Y(345) - 8);
+bubble(268, 604, "FI", "01", true, 302, 556);
+bubble(560, 612, "AI", "01", true, 462, 640);
+el("text", { x: X(2), y: Y(500), "font-size": 10, "font-weight": 700, fill: "#1f3b57", "font-family": "IBM Plex Sans" }).textContent = "N";
+el("text", { x: X(345), y: Y(352), "font-size": 10, "font-weight": 700, fill: "#1f3b57", "font-family": "IBM Plex Sans" }).textContent = "S";
+const lab = (x, y, t, a) => { el("text", { x, y, "font-size": 9, fill: "#3d4b52", "font-family": "IBM Plex Sans", "text-anchor": a || "start" }).textContent = t; };
+lab(X(-82), Y(45) - 9, "AIR IN");
+lab(X(-150), Y(415) - 9, "AIR OUT");
+["P1", "P2", "P3", "P4", "P5"].forEach((t, i) => lab(i % 2 === 0 ? X(158) : X(196), Y(zP(i, i % 2 === 0 ? 158 : 196)) - 5, t, "middle"));
+lab(X(150), Y(zFloor(150)) + 13, "black floor", "middle");
+lab(740, 482, "Arduino Mega logger");
+lab(886, 470, "Laptop (CSV)");
+
+/* ---------- tooltips ---------- */
+const tip = $("tip");
+const TIPS = {
+  TT01: (r) => ["TT-01 · DS18B20", "Feed water in the tank", r.TT01.toFixed(2) + " °C"],
+  TT02: (r) => ["TT-02 · DS18B20", "Brine in the jar", r.TT02.toFixed(2) + " °C"],
+  TT03: (r) => ["TT-03 · DS18B20", "Cover underside, centre, under aluminium tape", r.TT03.toFixed(2) + " °C"],
+  TRH01: (r) => ["TRH-01 · SHT31 (0x44)", "Ambient = inlet air, in a sun shield", r.TRH01T.toFixed(1) + " °C · " + r.TRH01RH.toFixed(0) + " %RH"],
+  TRH02: (r) => ["TRH-02 · SHT31 (0x45)", "Outlet air after the fan", r.TRH02T.toFixed(1) + " °C · " + r.TRH02RH.toFixed(0) + " %RH"],
+  RE01: (r) => ["RE-01 · pyranometer, 4–20 mA", "Tilted 24°, cover plane", r.RE01.toFixed(0) + " W/m²"],
+  ST01: (r) => ["ST-01 · 120 mm PWM fan", "Suction fan on the north wall; set " + p.pwm + " %", r.ST01 + " RPM · " + (s.out.Q * 1000).toFixed(1) + " L/s"],
+  WT01: (r) => ["WT-01 · scale, 1 g", "Feed tank, read by hand every 30 min", r.WT01 + " g"],
+  WT02: (r) => ["WT-02 · scale, 1 g", "Brine jar, read by hand every 30 min", r.WT02 + " g"],
+  V1: () => ["Valve V-1", "Sets the feed flow", p.feedL10h.toFixed(1) + " L per 10 h"],
+  FI01: (r) => ["FI-01 · hot-wire anemometer", "Inlet opening 200 × 35 mm, by hand", r.FI01.toFixed(2) + " m/s"],
+  LOG: () => ["Data logger", "Arduino Mega, SD card, DS3231 clock", logs.length + " rows, 1 per minute"],
+  LAP: () => ["Laptop", "CSV → MATLAB model for validation", logs.length + " rows"],
+};
+svg.addEventListener("mousemove", (ev) => {
+  const g = ev.target.closest("[data-tip]");
+  if (!g || !TIPS[g.dataset.tip] || !s.out) { tip.style.opacity = 0; return; }
+  const [t1, t2, v] = TIPS[g.dataset.tip](read());
+  tip.innerHTML = `<b>${t1}</b><br>${t2}<br><span class="v">${v}</span>`;
+  const box = svg.parentNode.getBoundingClientRect();
+  let x = ev.clientX - box.left + 14, y = ev.clientY - box.top + 14;
+  if (x > box.width - 270) x -= 290;
+  tip.style.left = x + "px"; tip.style.top = y + "px"; tip.style.opacity = 1;
+});
+svg.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
+
+/* ---------- scene update ---------- */
+const lerp = (a, b, t) => a + (b - a) * t;
+const mix = (c1, c2, t) => { const a = c1.match(/\w\w/g).map((h) => parseInt(h, 16)), b = c2.match(/\w\w/g).map((h) => parseInt(h, 16)); return "#" + a.map((v, i) => Math.round(lerp(v, b[i], t)).toString(16).padStart(2, "0")).join(""); };
+const tempColor = (T) => mix("2f86d4", "e8622c", Math.max(0, Math.min(1, (T - 18) / 20)));
+let anim = 0, fanAngle = 0;
+function updateScene(realDt) {
+  const o = s.out, wx = o.wx, h = (s.t / 3600) % 24;
+  const f = (h - wx.sr) / (wx.ss - wx.sr);
+  const day = f > 0 && f < 1 ? Math.sin(Math.PI * f) : 0;
+  const dusk = f > -0.06 && f < 1.06 ? Math.max(0, 1 - Math.abs(Math.min(Math.abs(f), Math.abs(1 - f))) / 0.08) : 0;
+  const night = f <= -0.04 || f >= 1.04;
+  const top = night ? "#0f1c2c" : mix(mix("1e3550", "7fb6dd", Math.min(1, day * 3)), "c77d4a", dusk * .5);
+  const bot = night ? "#22344a" : mix(mix("3b4f68", "dcecf4", Math.min(1, day * 3)), "f2c48f", dusk * .7);
+  $("sky0").setAttribute("stop-color", top); $("sky1").setAttribute("stop-color", bot);
+  const sx = 560 + 360 * Math.max(0, Math.min(1, f)), sy = 330 - 270 * day;
+  sunG.setAttribute("transform", `translate(${sx} ${sy})`);
+  sunG.setAttribute("opacity", night ? 0 : 1 - 0.55 * (1 - wx.G / Math.max(1, p.Gpk * Math.pow(Math.max(day, .01), 1.25))));
+  rays.setAttribute("opacity", Math.min(.9, wx.G / 900));
+  rayLines.forEach((ln, k) => { const tx = X(60 + k * 85), ty = Y(zCover(60 + k * 85)) - 4; ln.setAttribute("x1", sx); ln.setAttribute("y1", sy); ln.setAttribute("x2", tx); ln.setAttribute("y2", ty); ln.setAttribute("stroke-dashoffset", -anim * 30); });
+
+  airSeg.forEach((seg, g) => { seg.setAttribute("stroke", tempColor(o.gapT[g])); seg.setAttribute("stroke-dashoffset", -anim * 40 * o.Q / 0.008); });
+  arrowIn.setAttribute("stroke", tempColor(wx.Ta)); arrowOut.setAttribute("stroke", tempColor(o.Tout));
+  fanAngle = (fanAngle + realDt * o.rpm * 0.6) % 360;
+  bladeRot.setAttribute("transform", `rotate(${fanAngle})`);
+
+  films.forEach((fm, i) => {
+    const m = o.mIn[i], wet = m > 1e-7, rel = Math.min(1, m / (10 / 36000));
+    fm.base.setAttribute("opacity", wet ? .45 + .5 * rel : .08);
+    fm.base.setAttribute("stroke-width", wet ? 1.8 + 1.8 * rel : 1);
+    fm.flow.setAttribute("opacity", wet ? .9 : 0);
+    fm.flow.setAttribute("stroke-dashoffset", -anim * (6 + 30 * rel));
+  });
+  dripEls.forEach((d, i) => {
+    const m = o.mIn[i + 1], wet = m > 1e-7, rate = 0.6 + 2.5 * Math.min(1, m / (10 / 36000));
+    d.dots.forEach((dot, k) => {
+      const ph = (anim * rate + k / 3) % 1;
+      dot.setAttribute("cy", lerp(Y(d.za), Y(d.zb) - 2, ph));
+      dot.setAttribute("opacity", wet ? 0.9 * (1 - ph * .3) : 0);
+    });
+  });
+  condG.setAttribute("opacity", Math.min(1, o.cond * 3.6e6 / 15));
+  saltG.setAttribute("opacity", s.S[5] > 260 ? 1 : 0);
+  feedFlow.setAttribute("stroke-dashoffset", -anim * 12 * (o.mFeed > 0 ? 1 : 0));
+  brineFlow.setAttribute("stroke-dashoffset", -anim * 12 * (o.mBrine > 1e-7 ? 1 : 0));
+  valveHandle.setAttribute("transform", `rotate(${-90 + 90 * (p.feedL10h - 2) / 8} 330 ${vy})`);
+
+  const r = read();
+  const lev = Math.max(0, Math.min(1, s.Mtank / 10));
+  tankWater.setAttribute("y", tank.y + tank.h - 2 - (tank.h - 4) * lev); tankWater.setAttribute("height", (tank.h - 4) * lev);
+  const jl = Math.max(0, Math.min(1, s.Mjar / 8));
+  jarWater.setAttribute("y", jar.y + jar.h - 2 - (jar.h - 4) * jl); jarWater.setAttribute("height", (jar.h - 4) * jl);
+  wt01Txt.textContent = r.WT01 + " g"; wt02Txt.textContent = r.WT02 + " g"; fiTxt.textContent = r.FI01.toFixed(2);
+  const lines = [
+    `${hhmm(s.t)} G=${r.RE01.toFixed(0).padStart(4)}W/m2`,
+    `TT ${r.TT01.toFixed(1)} ${r.TT02.toFixed(1)} ${r.TT03.toFixed(1)}`,
+    `In ${r.TRH01T.toFixed(1)}C ${r.TRH01RH.toFixed(0)}%`,
+    `Out ${r.TRH02T.toFixed(1)}C ${r.TRH02RH.toFixed(0)}% ${r.ST01}`,
+  ];
+  lcdLines.forEach((t, k) => { t.textContent = lines[k]; });
+  lapTxt.textContent = `evap.csv  ${logs.length} rows`;
+  if (logs.length > 1) {
+    const h0 = 7, h1 = Math.max(13, logs[logs.length - 1].h);
+    const emax = Math.max(50, ...logs.map((l) => l.evapMeas));
+    const step_ = Math.max(1, Math.floor(logs.length / 60));
+    const pts = [];
+    for (let k = 0; k < logs.length; k += step_) { const l = logs[k]; pts.push((893 + 80 * (l.h - h0) / (h1 - h0)).toFixed(1) + "," + (541 - 44 * l.evapMeas / emax).toFixed(1)); }
+    lapLine.setAttribute("points", pts.join(" "));
+  }
+}
+
+/* ---------- side panel ---------- */
+function updatePanel() {
+  const r = read(), o = s.out;
+  $("pClock").textContent = hhmm(s.t);
+  $("pState").textContent = running ? "Running" : "Paused";
+  $("pState").className = "pill" + (running ? " run" : "");
+  $("pSpeed").textContent = "×" + speed;
+  $("bPlay").textContent = running ? "Pause" : "Run";
+  const rows = [
+    ["TT-01", "feed tank", r.TT01.toFixed(2) + " °C"],
+    ["TT-02", "brine jar", r.TT02.toFixed(2) + " °C"],
+    ["TT-03", "cover", r.TT03.toFixed(2) + " °C"],
+    ["TRH-01", "inlet air", r.TRH01T.toFixed(1) + " °C " + r.TRH01RH.toFixed(0).padStart(3) + " %"],
+    ["TRH-02", "outlet air", r.TRH02T.toFixed(1) + " °C " + r.TRH02RH.toFixed(0).padStart(3) + " %"],
+    ["RE-01", "sunlight", r.RE01.toFixed(0) + " W/m²"],
+    ["ST-01", "fan, PWM " + p.pwm + " %", r.ST01 + " RPM"],
+  ];
+  $("lcd").innerHTML = rows.map(([a, b, c]) => `<div class="row"><span>${a}</span><span>${b}</span><span>${c}</span></div>`).join("") +
+    `<div class="foot"><span>${hhmm(s.t)} · 1 row/min</span><span>SD: ${logs.length} rows</span></div>`;
+
+  const em = evapMeasured(r);
+  $("kEvap").innerHTML = em.toFixed(0) + "<small>g</small>";
+  $("kEvapN").textContent = "model: " + (s.cumEvap * 1000).toFixed(0) + " g · cover condensate " + (s.cumCond * 1000).toFixed(0) + " g";
+  $("kRate").innerHTML = (o.Esum * 3.6e6).toFixed(0) + "<small>g/h</small>";
+  $("kG").innerHTML = r.RE01.toFixed(0) + "<small>W/m²</small>";
+  $("kOut").innerHTML = r.TRH02RH.toFixed(0) + "<small>%RH</small>";
+  $("kOutN").textContent = r.TRH02T.toFixed(1) + " °C, inlet " + r.TRH01RH.toFixed(0) + " %RH";
+  $("kFloor").innerHTML = s.Tf[5].toFixed(1) + "<small>°C</small>";
+  $("kFloorN").textContent = (s.Tf[5] - o.wx.Ta >= 0 ? "+" : "") + (s.Tf[5] - o.wx.Ta).toFixed(1) + " K vs air · salinity " + s.S[5].toFixed(0) + " g/kg";
+  $("kTank").innerHTML = Math.max(0, s.Mtank).toFixed(2) + "<small>L</small>";
+  const hrs = o.mFeed > 0 ? (s.Mtank - 0.25) / (o.mFeed * 3600) : 0;
+  $("kTankN").textContent = o.mFeed > 0 ? "empty in about " + hrs.toFixed(1) + " h" : "tank empty: feed stopped";
+
+  const names = ["P1 (top)", "P2", "P3", "P4", "P5", "Floor"];
+  const maxE = Math.max(1e-9, ...o.E);
+  $("stages").innerHTML = names.map((n, i) => {
+    const g = 5 - i, m = o.mIn[i] * 3.6e6, e = o.E[i] * 3.6e6;
+    const st = o.mIn[i] <= 1e-7 ? '<span class="chip dry">dry</span>' : (o.E[i] > 0.8 * o.mIn[i] ? '<span class="chip low">drying</span>' : '<span class="chip wet">wet</span>');
+    return `<tr><td>${n}</td><td>${m.toFixed(0)}</td><td>${s.Tf[i].toFixed(1)}</td><td>${o.gapT[g].toFixed(1)} / ${(100 * o.gapRH[g]).toFixed(0)}</td><td>${e.toFixed(1)}</td><td class="bar"><div style="width:${Math.max(0, 100 * o.E[i] / maxE).toFixed(0)}%"></div></td><td>${s.S[i].toFixed(1)}</td><td>${st}</td></tr>`;
+  }).join("");
+
+  warn = s.Mtank <= 0.25 ? "Feed tank empty" : (s.Mjar > 7.6 ? "Brine jar nearly full" : (s.S[5] > 260 ? "Salt crystallising on floor" : ""));
+  $("pWarn").hidden = !warn; $("pWarn").textContent = warn;
+}
+function renderManual() {
+  $("manual").innerHTML = manual.slice().reverse().map((m) => `<tr><td>${hhmm(m.t)}</td><td>${m.WT01}</td><td>${m.WT02}</td><td>${m.evap}</td><td>${m.FI01.toFixed(2)}</td><td>${m.AI01 === null ? "–" : m.AI01.toFixed(1)}</td></tr>`).join("");
+}
+
+/* ---------- charts ---------- */
+function setupCanvas(c) {
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+function niceStep(range, n) { const raw = range / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag; }
+function chart(id, lgId, series, opt) {
+  const { ctx, w, h } = setupCanvas($(id));
+  $(lgId).innerHTML = series.map((sr) => `<span style="color:${sr.color}"><i class="${sr.dash ? "dash" : ""}" style="background:${sr.color}"></i><span style="color:var(--muted)">${sr.name}</span></span>`).join("");
+  const L = 44, R = 24, T = 8, B = 24, pw = w - L - R, ph = h - T - B;
+  const x0 = 7, x1 = Math.max(18, Math.ceil(logs.length ? logs[logs.length - 1].h : 18));
+  let lo = Infinity, hi = -Infinity;
+  series.forEach((sr) => sr.data.forEach(([, y]) => { if (y < lo) lo = y; if (y > hi) hi = y; }));
+  if (!isFinite(lo)) { lo = 0; hi = 1; }
+  if (opt.min !== undefined) lo = Math.min(lo, opt.min);
+  if (opt.max !== undefined) hi = Math.max(hi, opt.max);
+  const st = niceStep(Math.max(1e-6, hi - lo), 4);
+  lo = Math.floor(lo / st) * st; hi = Math.ceil(hi / st) * st; if (hi === lo) hi = lo + st;
+  const px = (x) => L + pw * (x - x0) / (x1 - x0), py = (y) => T + ph * (1 - (y - lo) / (hi - lo));
+  ctx.font = "11px IBM Plex Mono, monospace"; ctx.fillStyle = "#5b6b71"; ctx.strokeStyle = "#e3e9e8"; ctx.lineWidth = 1;
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let y = lo; y <= hi + st / 2; y += st) { ctx.beginPath(); ctx.moveTo(L, py(y)); ctx.lineTo(L + pw, py(y)); ctx.stroke(); ctx.fillText((st < 1 ? y.toFixed(1) : y.toFixed(0)), L - 6, py(y)); }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let x = x0 + 1; x <= x1; x += 2) { ctx.fillText(String(x).padStart(2, "0") + ":00", px(x), T + ph + 6); }
+  ctx.save(); ctx.translate(11, T + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(opt.unit, 0, 0); ctx.restore();
+  series.forEach((sr, k) => {
+    if (!sr.data.length) return;
+    ctx.beginPath(); sr.data.forEach(([x, y], i) => (i ? ctx.lineTo(px(x), py(y)) : ctx.moveTo(px(x), py(y))));
+    if (sr.fill) {
+      ctx.save(); ctx.lineTo(px(sr.data[sr.data.length - 1][0]), py(lo)); ctx.lineTo(px(sr.data[0][0]), py(lo)); ctx.closePath();
+      ctx.globalAlpha = .14; ctx.fillStyle = sr.color; ctx.fill(); ctx.restore();
+      ctx.beginPath(); sr.data.forEach(([x, y], i) => (i ? ctx.lineTo(px(x), py(y)) : ctx.moveTo(px(x), py(y))));
+    }
+    ctx.strokeStyle = sr.color; ctx.lineWidth = sr.width || 1.8; ctx.setLineDash(sr.dash ? [5, 4] : []); ctx.stroke(); ctx.setLineDash([]);
+    const [lx, ly] = sr.data[sr.data.length - 1];
+    ctx.fillStyle = sr.color; ctx.beginPath(); ctx.arc(px(lx), py(ly), 3, 0, Math.PI * 2); ctx.fill();
+  });
+}
+function thin(fn) { const st = Math.max(1, Math.floor(logs.length / 400)); const out = []; for (let i = 0; i < logs.length; i += st) out.push([logs[i].h, fn(logs[i])]); if (logs.length) out.push([logs[logs.length - 1].h, fn(logs[logs.length - 1])]); return out; }
+function drawCharts() {
+  chart("c1", "lg1", [
+    { name: "TT-01 feed", color: "#1679a8", data: thin((l) => l.r.TT01) },
+    { name: "TT-02 brine jar", color: "#a0692a", data: thin((l) => l.r.TT02) },
+    { name: "TT-03 cover", color: "#6c58a8", data: thin((l) => l.r.TT03) },
+    { name: "TRH-01 inlet air", color: "#7b8a90", data: thin((l) => l.r.TRH01T) },
+    { name: "TRH-02 outlet air", color: "#2f8a57", data: thin((l) => l.r.TRH02T) },
+    { name: "floor film (model)", color: "#c4472f", dash: true, data: thin((l) => l.Tf[5]) },
+  ], { unit: "°C" });
+  chart("c2", "lg2", [
+    { name: "TRH-01 inlet", color: "#7b8a90", data: thin((l) => l.r.TRH01RH) },
+    { name: "TRH-02 outlet", color: "#2f8a57", data: thin((l) => l.r.TRH02RH) },
+  ], { unit: "%RH", min: 30, max: 100 });
+  chart("c3", "lg3", [
+    { name: "scale balance (WT-01, WT-02, 1 g)", color: "#0d6f8f", fill: true, data: thin((l) => l.evapMeas) },
+    { name: "model, true", color: "#18262c", dash: true, width: 1.2, data: thin((l) => l.evapModel) },
+  ], { unit: "g", min: 0 });
+  chart("c4", "lg4", [
+    { name: "RE-01", color: "#d98a1c", fill: true, data: thin((l) => l.r.RE01) },
+  ], { unit: "W/m²", min: 0 });
+}
+
+/* ---------- controls ---------- */
+function bindRange(id, out, key, fmt) {
+  const inp = $(id);
+  const sync = () => { p[key] = parseFloat(inp.value); $(out).textContent = fmt(p[key]); if (key === "pwm") $("oFlow").textContent = "≈ " + (12 * p.pwm / 100).toFixed(1) + " L/s air, " + (12 * p.pwm / 100 / 7).toFixed(2) + " m/s at the inlet (model fan curve)"; };
+  inp.addEventListener("input", sync); sync();
+}
+bindRange("iFeed", "oFeed", "feedL10h", (v) => v.toFixed(1) + " L / 10 h");
+bindRange("iPwm", "oPwm", "pwm", (v) => v + " %");
+bindRange("iSal", "oSal", "salinity", (v) => v + " g/kg");
+bindRange("iG", "oG", "Gpk", (v) => v + " W/m²");
+bindRange("iCl", "oCl", "cloud", (v) => v + " %");
+bindRange("iTmin", "oTmin", "Tmin", (v) => v.toFixed(1) + " °C");
+bindRange("iTmax", "oTmax", "Tmax", (v) => v.toFixed(1) + " °C");
+bindRange("iRh", "oRh", "rhDawn", (v) => v + " %");
+bindRange("iWind", "oWind", "wind", (v) => v.toFixed(1) + " m/s");
+$("bPlay").addEventListener("click", () => { if (s.t >= 24 * 3600 - 60) return; running = !running; updatePanel(); });
+$("bReset").addEventListener("click", () => { reset(); drawCharts(); updatePanel(); renderManual(); updateScene(0); });
+$("sSpeed").addEventListener("change", (e) => { speed = parseInt(e.target.value, 10); updatePanel(); });
+$("bRefill").addEventListener("click", () => { const add = 10 - s.Mtank; if (add > 0) { s.Mtank = 10; tankAdded += Math.round(add * 1000); } flash("Tank refilled to 10 L (+" + Math.round(add * 1000) + " g noted on the log sheet)"); });
+$("bEmpty").addEventListener("click", () => { const rem = s.Mjar - 0.3; if (rem > 0) { s.Mjar = 0.3; jarRemoved += Math.round(rem * 1000); } flash("Brine jar emptied to 300 g (" + Math.round(Math.max(0, rem) * 1000) + " g removed, noted)"); });
+function flash(t) { $("msg").textContent = t; clearTimeout(flash.h); flash.h = setTimeout(() => { $("msg").textContent = ""; }, 4000); }
+function csvLogger() {
+  const head = "time,TT01_C,TT02_C,TT03_C,TRH01_T_C,TRH01_RH_pct,TRH02_T_C,TRH02_RH_pct,RE01_Wm2,ST01_rpm";
+  return head + "\n" + logs.map((l) => { const r = l.r; return [hhmm(l.t), r.TT01.toFixed(4), r.TT02.toFixed(4), r.TT03.toFixed(4), r.TRH01T.toFixed(2), r.TRH01RH.toFixed(1), r.TRH02T.toFixed(2), r.TRH02RH.toFixed(1), r.RE01.toFixed(0), r.ST01].join(","); }).join("\n");
+}
+function csvManual() {
+  return "time,WT01_g,WT02_g,evaporated_g,FI01_m_s,AI01_g_kg\n" + manual.map((m) => [hhmm(m.t), m.WT01, m.WT02, m.evap, m.FI01.toFixed(2), m.AI01 === null ? "" : m.AI01.toFixed(1)].join(",")).join("\n");
+}
+async function copy(text, what) {
+  try { await navigator.clipboard.writeText(text); flash(what + " copied (" + text.split("\n").length + " lines). Paste into Excel or a .csv file."); $("csvBox").style.display = "none"; }
+  catch (e) { const b = $("csvBox"); b.style.display = "block"; b.value = text; b.focus(); b.select(); flash("Clipboard blocked here: the text is selected below, press Ctrl+C."); }
+}
+$("bCopy").addEventListener("click", () => copy(csvLogger(), "Logger CSV"));
+$("bCopyMan").addEventListener("click", () => copy(csvManual(), "Manual log sheet"));
+
+/* ---------- loop ---------- */
+reset();
+advance(5 * 3600);        // open at noon with the morning already logged
+drawCharts(); updatePanel(); updateScene(0);
+let last = performance.now(), panelT = 0, chartT = 0;
+function frame(now) {
+  const rd = Math.min(0.1, (now - last) / 1000); last = now;
+  if (running) { advance(rd * speed); }
+  if (!reduced) anim += rd;
+  updateScene(running ? rd : 0);
+  panelT += rd; chartT += rd;
+  if (panelT > 0.25) { panelT = 0; updatePanel(); }
+  if (chartT > 0.8) { chartT = 0; drawCharts(); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.addEventListener("resize", drawCharts);
+})();
+</script>
+</body>
+</html>
