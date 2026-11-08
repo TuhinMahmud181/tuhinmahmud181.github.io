@@ -801,10 +801,10 @@ const TIPS = {
   TRH01: (r) => ["TRH-01 · SHT31 (0x44)", "Ambient = inlet air, in a sun shield", r.TRH01T.toFixed(1) + " °C · " + r.TRH01RH.toFixed(0) + " %RH"],
   TRH02: (r) => ["TRH-02 · SHT31 (0x45)", "Outlet air after the fan", r.TRH02T.toFixed(1) + " °C · " + r.TRH02RH.toFixed(0) + " %RH"],
   RE01: (r) => ["RE-01 · pyranometer, 4–20 mA", "Tilted 24°, cover plane", r.RE01.toFixed(0) + " W/m²"],
-  ST01: (r) => ["ST-01 · 120 mm PWM fan", "Suction fan on the north wall; set " + p.pwm + " %", r.ST01 + " RPM · " + (s.out.Q * 1000).toFixed(1) + " L/s"],
+  ST01: (r) => ["ST-01 · 120 mm PWM fan", "Suction fan on the north wall; set " + p.pwm + " %", finished ? "stopped: day ended" : r.ST01 + " RPM · " + (s.out.Q * 1000).toFixed(1) + " L/s"],
   WT01: (r) => ["WT-01 · scale, 1 g", "Feed tank, read by hand every 30 min", r.WT01 + " g"],
   WT02: (r) => ["WT-02 · scale, 1 g", "Brine jar, read by hand every 30 min", r.WT02 + " g"],
-  V1: () => ["Valve V-1", "Sets the feed flow", p.feedL10h.toFixed(1) + " L per 10 h"],
+  V1: () => ["Valve V-1", "Sets the feed flow", finished ? "closed: day ended" : (s.Mtank <= 1e-9 ? "open, but the tank is empty" : p.feedL10h.toFixed(1) + " L per 10 h")],
   FI01: (r) => ["FI-01 · hot-wire anemometer", "Inlet opening 200 × 35 mm, by hand", r.FI01.toFixed(2) + " m/s"],
   LOG: () => ["Data logger", "Arduino Mega, SD card, DS3231 clock", logs.length + " rows, 1 per minute"],
   LAP: () => ["Laptop", "CSV → MATLAB model for validation", logs.length + " rows"],
@@ -824,6 +824,7 @@ svg.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
 /* ---------- scene update ---------- */
 const lerp = (a, b, t) => a + (b - a) * t;
 const mix = (c1, c2, t) => { const a = c1.match(/\w\w/g).map((h) => parseInt(h, 16)), b = c2.match(/\w\w/g).map((h) => parseInt(h, 16)); return "#" + a.map((v, i) => Math.round(lerp(v, b[i], t)).toString(16).padStart(2, "0")).join(""); };
+const FLOW_MIN = 1.4e-6;   // kg/s, about 5 g/h: below this no running film is drawn
 const tempColor = (T) => mix("2f86d4", "e8622c", Math.max(0, Math.min(1, (T - 18) / 20)));
 let anim = 0, fanAngle = 0;
 function updateScene(realDt) {
@@ -841,20 +842,22 @@ function updateScene(realDt) {
   rays.setAttribute("opacity", Math.min(.9, wx.G / 900));
   rayLines.forEach((ln, k) => { const tx = X(60 + k * 85), ty = Y(zCover(60 + k * 85)) - 4; ln.setAttribute("x1", sx); ln.setAttribute("y1", sy); ln.setAttribute("x2", tx); ln.setAttribute("y2", ty); ln.setAttribute("stroke-dashoffset", -anim * 30); });
 
-  airSeg.forEach((seg, g) => { seg.setAttribute("stroke", tempColor(o.gapT[g])); seg.setAttribute("stroke-dashoffset", -anim * 40 * o.Q / 0.008); });
+  const off = finished;                           // after the day ends: fan off, valve closed
+  airSeg.forEach((seg, g) => { seg.setAttribute("stroke", tempColor(o.gapT[g])); seg.setAttribute("stroke-dashoffset", -anim * 40 * o.Q / 0.008); seg.setAttribute("opacity", off ? 0 : .85); });
+  arrowIn.setAttribute("opacity", off ? 0 : 1); arrowOut.setAttribute("opacity", off ? 0 : 1);
   arrowIn.setAttribute("stroke", tempColor(wx.Ta)); arrowOut.setAttribute("stroke", tempColor(o.Tout));
-  fanAngle = (fanAngle + realDt * o.rpm * 0.6) % 360;
+  if (!off) fanAngle = (fanAngle + realDt * o.rpm * 0.6) % 360;
   bladeRot.setAttribute("transform", `rotate(${fanAngle})`);
 
   films.forEach((fm, i) => {
-    const m = o.mIn[i], wet = m > 1e-7, rel = Math.min(1, Math.sqrt(m / (100 / 36000)));
+    const m = off ? 0 : o.mIn[i], wet = m > FLOW_MIN, rel = Math.min(1, Math.sqrt(m / (100 / 36000)));
     fm.base.setAttribute("opacity", wet ? .45 + .5 * rel : .08);
     fm.base.setAttribute("stroke-width", wet ? 1.8 + 1.8 * rel : 1);
     fm.flow.setAttribute("opacity", wet ? .9 : 0);
     fm.flow.setAttribute("stroke-dashoffset", -anim * (6 + 30 * rel));
   });
   dripEls.forEach((d, i) => {
-    const m = o.mIn[i + 1], wet = m > 1e-7, rate = 0.6 + 2.5 * Math.min(1, Math.sqrt(m / (100 / 36000)));
+    const m = off ? 0 : o.mIn[i + 1], wet = m > FLOW_MIN, rate = 0.6 + 2.5 * Math.min(1, Math.sqrt(m / (100 / 36000)));
     d.dots.forEach((dot, k) => {
       const ph = (anim * rate + k / 3) % 1;
       dot.setAttribute("cy", lerp(Y(d.za), Y(d.zb) - 2, ph));
@@ -863,9 +866,10 @@ function updateScene(realDt) {
   });
   condG.setAttribute("opacity", Math.min(1, o.cond * 3.6e6 / 15));
   saltG.setAttribute("opacity", s.S[5] > 260 ? 1 : 0);
-  feedFlow.setAttribute("stroke-dashoffset", -anim * 12 * (o.mFeed > 0 ? 1 : 0));
-  brineFlow.setAttribute("stroke-dashoffset", -anim * 12 * (o.mBrine > 1e-7 ? 1 : 0));
-  valveHandle.setAttribute("transform", `rotate(${-90 + 90 * (p.feedL10h - 2) / 8} 330 ${vy})`);
+  const feeding = !off && o.mFeed > FLOW_MIN, draining = !off && o.mBrine > FLOW_MIN;
+  feedFlow.setAttribute("stroke-dashoffset", -anim * 12); feedFlow.setAttribute("opacity", feeding ? 1 : 0);
+  brineFlow.setAttribute("stroke-dashoffset", -anim * 12); brineFlow.setAttribute("opacity", draining ? 1 : 0);
+  valveHandle.setAttribute("transform", `rotate(${off ? -90 : -90 + 90 * Math.min(1, p.feedL10h / 100)} 330 ${vy})`);
 
   const r = read();
   const lev = Math.max(0, Math.min(1, s.Mtank / Math.max(p.tankL, s.Mtank, 1e-9)));
@@ -909,7 +913,7 @@ function updatePanel() {
     ["TRH-01", "inlet air", r.TRH01T.toFixed(1) + " °C " + r.TRH01RH.toFixed(0).padStart(3) + " %"],
     ["TRH-02", "outlet air", r.TRH02T.toFixed(1) + " °C " + r.TRH02RH.toFixed(0).padStart(3) + " %"],
     ["RE-01", "sunlight", r.RE01.toFixed(0) + " W/m²"],
-    ["ST-01", "fan, PWM " + p.pwm + " %", r.ST01 + " RPM"],
+    ["ST-01", finished ? "fan" : "fan, PWM " + p.pwm + " %", finished ? "stopped" : r.ST01 + " RPM"],
   ];
   $("lcd").innerHTML = rows.map(([a, b, c]) => `<div class="row"><span>${a}</span><span>${b}</span><span>${c}</span></div>`).join("") +
     `<div class="foot"><span>${hhmm(s.t)} · 1 row/min</span><span>SD: ${logs.length} rows</span></div>`;
@@ -917,7 +921,8 @@ function updatePanel() {
   const em = evapMeasured(r);
   $("kEvap").innerHTML = em.toFixed(0) + "<small>g</small>";
   $("kEvapN").textContent = "model: " + (s.cumEvap * 1000).toFixed(0) + " g · cover condensate " + (s.cumCond * 1000).toFixed(0) + " g";
-  $("kRate").innerHTML = (o.Esum * 3.6e6).toFixed(0) + "<small>g/h</small>";
+  $("kRate").innerHTML = (finished ? 0 : o.Esum * 3.6e6).toFixed(0) + "<small>g/h</small>";
+  $("kRateN").textContent = finished ? "day ended: fan and valve off" : (s.Mtank <= 1e-9 ? "tank empty: plates drying out" : "model, all 6 stages");
   $("kG").innerHTML = r.RE01.toFixed(0) + "<small>W/m²</small>";
   $("kOut").innerHTML = r.TRH02RH.toFixed(0) + "<small>%RH</small>";
   $("kOutN").textContent = r.TRH02T.toFixed(1) + " °C, inlet " + r.TRH01RH.toFixed(0) + " %RH";
@@ -1083,7 +1088,7 @@ let last = performance.now(), panelT = 0, chartT = 0;
 function frame(now) {
   const rd = Math.min(0.1, (now - last) / 1000); last = now;
   if (running) { advance(rd * speed); }
-  if (!reduced) anim += rd;
+  if (!reduced && running) anim += rd;          // motion only while the run is going
   updateScene(running ? rd : 0);
   panelT += rd; chartT += rd;
   if (panelT > 0.25) { panelT = 0; updatePanel(); }
