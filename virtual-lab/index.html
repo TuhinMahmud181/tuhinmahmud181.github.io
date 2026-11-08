@@ -140,7 +140,7 @@ td.bar div { height: 8px; background: var(--accent); border-radius: 4px; min-wid
       <p class="byline">Tuhin Mahmud · MSc research, Department of Chemical Engineering, BUET · <a href="https://github.com/TuhinMahmud181/ZLDD_Solar_Still_Modeling">full MATLAB model</a></p>
     </div>
     <div class="pills">
-      <span class="pill" id="pClock" title="Bangladesh Standard Time, UTC+6">7:00 am Dhaka time</span>
+      <span class="pill" id="pClock">7:00 am</span>
       <span class="pill run" id="pState">Running</span>
       <span class="pill" id="pSpeed">×600</span>
       <span class="pill warn" id="pWarn" hidden></span>
@@ -903,7 +903,7 @@ function updateScene(realDt) {
 /* ---------- side panel ---------- */
 function updatePanel() {
   const r = read(), o = s.out;
-  $("pClock").textContent = clock(s.t) + " Dhaka time";
+  $("pClock").textContent = clock(s.t);
   $("pState").textContent = finished ? "Day ended at " + ampm(p.endHour) : (running ? "Running" : "Paused");
   $("pState").className = "pill" + (finished ? " done" : (running ? " run" : ""));
   $("pSpeed").textContent = "×" + speed;
