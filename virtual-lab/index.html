@@ -472,9 +472,9 @@ function read() {
     TT01: ds18(s.Ttank), TT02: ds18(s.Tjar), TT03: ds18(s.Tc),
     TRH01T: wx.Ta + 0.08 * gauss(), TRH01RH: Math.min(100, 100 * wx.RH + 0.6 * gauss()),
     TRH02T: o.Tout + 0.08 * gauss(), TRH02RH: Math.min(100, 100 * o.RHout + 0.6 * gauss()),
-    RE01: Math.max(0, wx.G * (1 + 0.01 * gauss())), ST01: Math.round(o.rpm + 8 * gauss()),
+    RE01: Math.max(0, wx.G * (1 + 0.01 * gauss())), ST01: finished ? 0 : Math.round(o.rpm + 8 * gauss()),
     WT01: Math.round((GEO.tankTare + s.Mtank) * 1000), WT02: Math.round((GEO.jarTare + s.Mjar) * 1000),
-    FI01: o.vin * (1 + 0.03 * gauss()), AI01: s.Sjar * (1 + 0.01 * gauss()),
+    FI01: finished ? 0 : o.vin * (1 + 0.03 * gauss()), AI01: s.Sjar * (1 + 0.01 * gauss()),
   };
 }
 function evapMeasured(r) {
@@ -559,8 +559,8 @@ el("rect", { x: 0, y: 0, width: 1000, height: 720, fill: "url(#gSky)" });
 const sunG = el("g", {});
 el("circle", { r: 46, fill: "url(#gSun)" }, sunG);
 el("circle", { r: 15, fill: "#fff3b8" }, sunG);
-const rays = el("g", { stroke: "#f5b43c", "stroke-width": 2, "stroke-linecap": "round", opacity: 0 });
-const rayLines = [0, 1, 2, 3].map(() => el("line", { "stroke-dasharray": "2 9" }, rays));
+const rays = el("g", { stroke: "#ffd27a", "stroke-width": 5, "stroke-linecap": "round", opacity: 0 });
+const rayLines = [0, 1, 2, 3].map(() => el("line", {}, rays));
 el("rect", { x: 0, y: 640, width: 1000, height: 80, fill: "#a9aea8" });
 el("rect", { x: 0, y: 640, width: 1000, height: 4, fill: "#8f958f" });
 el("text", { x: 14, y: 708, "font-size": 11, fill: "#5d635e", "font-family": "IBM Plex Sans" }).textContent = "Roof test area, BUET";
@@ -673,7 +673,7 @@ emptyTxt.textContent = "EMPTY";
 // feed tube to Ø12 hole in north wall, onto P1
 const tubeD = `M${tank.x + tank.w} ${tank.y + tank.h - 8} L330 ${tank.y + tank.h - 8} L330 ${Y(272)} L${X(4)} ${Y(272)} L${X(6)} ${Y(262)}`;
 el("path", { d: tubeD, fill: "none", stroke: "#6c9fb5", "stroke-width": 5, "stroke-linejoin": "round" });
-el("path", { d: tubeD, fill: "none", stroke: "#d8f0fa", "stroke-width": 2.6, "stroke-linejoin": "round" });
+const feedInner = el("path", { d: tubeD, fill: "none", stroke: "#d8f0fa", "stroke-width": 2.6, "stroke-linejoin": "round" });
 const feedFlow = el("path", { d: tubeD, fill: "none", stroke: "#2a8fc4", "stroke-width": 1.4, "stroke-dasharray": "3 8", "stroke-linejoin": "round" });
 const valveG = el("g", { "data-tip": "V1" });
 const vy = 312;
@@ -685,7 +685,7 @@ el("circle", { cx: 330, cy: vy, r: 3, fill: "#20272a" }, valveG);
 const jarG = el("g", { "data-tip": "WT02" });
 const drainD = `M${X(3)} ${Y(-3)} L${X(3)} 590 Q${X(3)} 606 418 610`;
 el("path", { d: drainD, fill: "none", stroke: "#a77b3f", "stroke-width": 4.5 }, jarG);
-el("path", { d: drainD, fill: "none", stroke: "#f2dfbf", "stroke-width": 2.2 }, jarG);
+const drainInner = el("path", { d: drainD, fill: "none", stroke: "#f2dfbf", "stroke-width": 2.2 }, jarG);
 const brineFlow = el("path", { d: drainD, fill: "none", stroke: "#b07a35", "stroke-width": 1.2, "stroke-dasharray": "3 8" }, jarG);
 el("rect", { x: 368, y: 690, width: 104, height: 14, rx: 3, fill: "#d9dde0", stroke: "#8b9397" }, jarG);
 el("rect", { x: 392, y: 693, width: 56, height: 9, rx: 1.5, fill: "#1b2a22" }, jarG);
@@ -749,7 +749,7 @@ const lapLine = el("polyline", { fill: "none", stroke: "#0d6f8f", "stroke-width"
 const lapTxt = el("text", { x: 895, y: 490, "font-size": 6.5, fill: "#18262c", class: "mono" }, lapG);
 
 // signal cables to the logger
-const cab = el("g", { fill: "none", stroke: "#3a4348", "stroke-width": 1, opacity: .22, "stroke-dasharray": "4 4" });
+const cab = el("g", { fill: "none", stroke: "#3a4348", "stroke-width": 1, opacity: .2 });
 for (const d of [
   `M200 140 C 200 110, 700 110, 760 488`,
   `M400 596 C 520 600, 700 600, 770 560`,
@@ -805,7 +805,7 @@ const TIPS = {
   WT01: (r) => ["WT-01 · scale, 1 g", "Feed tank, read by hand every 30 min", r.WT01 + " g"],
   WT02: (r) => ["WT-02 · scale, 1 g", "Brine jar, read by hand every 30 min", r.WT02 + " g"],
   V1: () => ["Valve V-1", "Sets the feed flow", finished ? "closed: day ended" : (s.Mtank <= 1e-9 ? "open, but the tank is empty" : p.feedL10h.toFixed(1) + " L per 10 h")],
-  FI01: (r) => ["FI-01 · hot-wire anemometer", "Inlet opening 200 × 35 mm, by hand", r.FI01.toFixed(2) + " m/s"],
+  FI01: (r) => ["FI-01 · hot-wire anemometer", "Inlet opening 200 × 35 mm, by hand", finished ? "0.00 m/s: fan stopped" : r.FI01.toFixed(2) + " m/s"],
   LOG: () => ["Data logger", "Arduino Mega, SD card, DS3231 clock", logs.length + " rows, 1 per minute"],
   LAP: () => ["Laptop", "CSV → MATLAB model for validation", logs.length + " rows"],
 };
@@ -839,8 +839,8 @@ function updateScene(realDt) {
   const sx = 560 + 360 * Math.max(0, Math.min(1, f)), sy = 330 - 270 * day;
   sunG.setAttribute("transform", `translate(${sx} ${sy})`);
   sunG.setAttribute("opacity", night ? 0 : 1 - 0.55 * (1 - wx.G / Math.max(1, p.Gpk * Math.pow(Math.max(day, .01), 1.25))));
-  rays.setAttribute("opacity", Math.min(.9, wx.G / 900));
-  rayLines.forEach((ln, k) => { const tx = X(60 + k * 85), ty = Y(zCover(60 + k * 85)) - 4; ln.setAttribute("x1", sx); ln.setAttribute("y1", sy); ln.setAttribute("x2", tx); ln.setAttribute("y2", ty); ln.setAttribute("stroke-dashoffset", -anim * 30); });
+  rays.setAttribute("opacity", Math.min(.35, 0.35 * wx.G / 900));
+  rayLines.forEach((ln, k) => { const tx = X(60 + k * 85), ty = Y(zCover(60 + k * 85)) - 4; ln.setAttribute("x1", sx); ln.setAttribute("y1", sy); ln.setAttribute("x2", tx); ln.setAttribute("y2", ty); });
 
   const off = finished;                           // after the day ends: fan off, valve closed
   airSeg.forEach((seg, g) => { seg.setAttribute("stroke", tempColor(o.gapT[g])); seg.setAttribute("stroke-dashoffset", -anim * 40 * o.Q / 0.008); seg.setAttribute("opacity", off ? 0 : .85); });
@@ -869,6 +869,8 @@ function updateScene(realDt) {
   const feeding = !off && o.mFeed > FLOW_MIN, draining = !off && o.mBrine > FLOW_MIN;
   feedFlow.setAttribute("stroke-dashoffset", -anim * 12); feedFlow.setAttribute("opacity", feeding ? 1 : 0);
   brineFlow.setAttribute("stroke-dashoffset", -anim * 12); brineFlow.setAttribute("opacity", draining ? 1 : 0);
+  feedInner.setAttribute("stroke", feeding ? "#bfe3f5" : "#f3f6f7");      // empty clear tube when nothing flows
+  drainInner.setAttribute("stroke", draining ? "#f2dfbf" : "#f6f3ee");
   valveHandle.setAttribute("transform", `rotate(${off ? -90 : -90 + 90 * Math.min(1, p.feedL10h / 100)} 330 ${vy})`);
 
   const r = read();
@@ -933,7 +935,8 @@ function updatePanel() {
   $("kTank").style.color = isEmpty ? "var(--hot)" : "";
   const left = Math.max(0, endT() - s.t), need = p.feedL10h / 36000 * left;
   let tn;
-  if (isEmpty) tn = "ran empty at " + ampm(s.emptyAt / 3600) + ", feed stopped";
+  if (finished) tn = isEmpty ? "ran empty at " + ampm(s.emptyAt / 3600) + "; day ended" : "day ended, valve closed";
+  else if (isEmpty) tn = "ran empty at " + ampm(s.emptyAt / 3600) + ", feed stopped";
   else if (p.feedL10h <= 0) tn = "valve closed, no feed";
   else if (need > s.Mtank) tn = "will run empty at about " + ampm((s.t + s.Mtank / (p.feedL10h / 36000)) / 3600) + ", before the day ends at " + ampm(p.endHour);
   else tn = "enough until " + ampm(p.endHour) + " (" + (s.Mtank - need).toFixed(2) + " L spare)";
@@ -942,9 +945,9 @@ function updatePanel() {
   const names = ["P1 (top)", "P2", "P3", "P4", "P5", "Floor"];
   const maxE = Math.max(1e-9, ...o.E);
   $("stages").innerHTML = names.map((n, i) => {
-    const g = 5 - i, m = o.mIn[i] * 3.6e6, e = o.E[i] * 3.6e6;
-    const st = o.mIn[i] <= 1e-7 ? '<span class="chip dry">dry</span>' : (o.E[i] > 0.8 * o.mIn[i] ? '<span class="chip low">drying</span>' : '<span class="chip wet">wet</span>');
-    return `<tr><td>${n}</td><td>${m.toFixed(0)}</td><td>${s.Tf[i].toFixed(1)}</td><td>${o.gapT[g].toFixed(1)} / ${(100 * o.gapRH[g]).toFixed(0)}</td><td>${e.toFixed(1)}</td><td class="bar"><div style="width:${Math.max(0, 100 * o.E[i] / maxE).toFixed(0)}%"></div></td><td>${s.S[i].toFixed(1)}</td><td>${st}</td></tr>`;
+    const g = 5 - i, m = finished ? 0 : o.mIn[i] * 3.6e6, e = finished ? 0 : o.E[i] * 3.6e6;
+    const st = finished ? '<span class="chip low">stopped</span>' : (o.mIn[i] <= 1e-7 ? '<span class="chip dry">dry</span>' : (o.E[i] > 0.8 * o.mIn[i] ? '<span class="chip low">drying</span>' : '<span class="chip wet">wet</span>'));
+    return `<tr><td>${n}</td><td>${m.toFixed(0)}</td><td>${s.Tf[i].toFixed(1)}</td><td>${o.gapT[g].toFixed(1)} / ${(100 * o.gapRH[g]).toFixed(0)}</td><td>${e.toFixed(1)}</td><td class="bar"><div style="width:${finished ? 0 : Math.max(0, 100 * o.E[i] / maxE).toFixed(0)}%"></div></td><td>${s.S[i].toFixed(1)}</td><td>${st}</td></tr>`;
   }).join("");
 
   warn = isEmpty ? "Feed tank EMPTY since " + ampm(s.emptyAt / 3600) : (s.Mjar > 0.95 * jarCap() ? "Brine jar nearly full" : (s.S[5] > 260 ? "Salt crystallising on floor" : ""));
